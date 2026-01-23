@@ -1,7 +1,7 @@
 #!/bin/bash
 # ==================================================
 # Welcome Message Installer (Single File)
-# NAT VM by Nauval
+# NAT VM by Shaq
 # ==================================================
 
 TARGET="/etc/profile.d/welcome.sh"
