@@ -43,7 +43,7 @@ DISK_PCT=$(df -h / | awk 'NR==2 {print $5}')
 
 clear
 echo -e "${CYAN}=================================================${NC}"
-echo -e "${YELLOW} 🚀 NAT VM by Nauval${NC}"
+echo -e "${YELLOW} 🚀 NAT VM by Shaq${NC}"
 echo -e "${CYAN}=================================================${NC}"
 
 echo -e "${GREEN}User        ${NC}: $USER"
