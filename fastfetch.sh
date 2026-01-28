@@ -185,9 +185,6 @@ chmod -x /etc/update-motd.d/* 2>/dev/null
 sed -i '/fastfetch/d' /root/.bashrc
 sed -i '/fastfetch/d' /etc/profile
 
-# Add to .bashrc (for interactive root login)
-echo "fastfetch --config /root/.config/fastfetch/config.jsonc" >> /root/.bashrc
-
 # Add to /etc/profile (for all users)
 echo "if [ -n \"\$PS1\" ]; then fastfetch --config /root/.config/fastfetch/config.jsonc; fi" >> /etc/profile
 
