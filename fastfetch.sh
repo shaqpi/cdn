@@ -1,15 +1,43 @@
 #!/bin/bash
 # ==================================================
-# Fastfetch MOTD Installer (Clean Version)
+# Fastfetch MOTD Installer (Universal Debian/Ubuntu)
 # NAT VM by Shaq
 # ==================================================
 
-# 1. Install Fastfetch
+# Pastikan dijalankan sebagai root
+if [ "$EUID" -ne 0 ]; then
+  echo "Please run as root"
+  exit
+fi
+
+echo "[+] Installing Dependencies..."
+apt-get update
+apt-get install -y curl wget
+
 echo "[+] Installing Fastfetch..."
-if ! command -v fastfetch &> /dev/null; then
-    sudo add-apt-repository ppa:zhangsongcui3371/fastfetch -y
-    sudo apt update
-    sudo apt install fastfetch -y
+
+# Cek OS ID
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS=$ID
+fi
+
+if [[ "$OS" == "ubuntu" ]]; then
+    # === CARA UBUNTU (PPA) ===
+    apt-get install -y software-properties-common
+    add-apt-repository ppa:zhangsongcui3371/fastfetch -y
+    apt-get update
+    apt-get install -y fastfetch
+else
+    # === CARA DEBIAN (DIRECT DEB) ===
+    # Coba install dari repo bawaan dulu (Debian 12/13 mungkin sudah ada)
+    if ! apt-get install -y fastfetch; then
+        echo "Fastfetch not found in repo, downloading .deb..."
+        # Download versi stabil terbaru dari GitHub
+        wget -O fastfetch.deb https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb
+        apt-get install -y ./fastfetch.deb
+        rm fastfetch.deb
+    fi
 fi
 
 # 2. Setup Config Directory
@@ -35,7 +63,7 @@ $8    ⡝⡵⡕⡀⠑⠳⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⢉�
 $8
 EOF
 
-# 4. Create Fastfetch Config JSON (Tanpa Timer)
+# 4. Create Fastfetch Config JSON
 cat << 'EOF' > /root/.config/fastfetch/config.jsonc
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
@@ -149,7 +177,7 @@ EOF
 
 # 5. Disable Default Login Messages & Enable Fastfetch
 touch ~/.hushlogin
-sudo chmod -x /etc/update-motd.d/* 2>/dev/null
+chmod -x /etc/update-motd.d/* 2>/dev/null
 
 # Add to .bashrc only if not already present
 if ! grep -q "fastfetch --config /root/.config/fastfetch/config.jsonc" /root/.bashrc; then
