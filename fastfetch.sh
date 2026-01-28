@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==================================================
-# Neofetch & Fish Installer (Universal & Stable)
+# Neofetch (Side-by-Side) & Fish Installer
 # NAT VM by Shaq
 # ==================================================
 
@@ -11,44 +11,38 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # ==================================================
-# 1. BERSIHKAN KONFIGURASI LAMA (FIX DOUBLE)
+# 1. BERSIHKAN KONFIGURASI LAMA
 # ==================================================
 echo "[+] Cleaning up old configurations..."
-# Hapus trigger lama
-sed -i '/fastfetch/d' /root/.bashrc
-sed -i '/fastfetch/d' /etc/profile
-sed -i '/neofetch/d' /root/.bashrc
-sed -i '/neofetch/d' /etc/profile
+# Hapus baris trigger lama
+sed -i '/fastfetch/d' /root/.bashrc /etc/profile
+sed -i '/neofetch/d' /root/.bashrc /etc/profile
 
-# Hapus file config lama
-rm -rf /root/.config/fastfetch
-rm -f /etc/profile.d/fastfetch.sh
-rm -f /etc/profile.d/welcome.sh
-rm -f /etc/profile.d/99-motd.sh
-rm -f /etc/profile.d/99-neofetch.sh
-rm -f /usr/local/bin/vps-timer.sh
+# Hapus file/folder config lama
+rm -rf /root/.config/fastfetch /root/.config/neofetch
+rm -f /etc/profile.d/fastfetch.sh /etc/profile.d/welcome.sh /etc/profile.d/99-motd.sh /etc/profile.d/99-neofetch.sh /usr/local/bin/vps-timer.sh
 
 # Matikan default MOTD Linux
 touch ~/.hushlogin
 chmod -x /etc/update-motd.d/* 2>/dev/null
 
 # ==================================================
-# 2. INSTALL NEOFETCH & FISH
+# 2. INSTALL PAKET (NEOFETCH & FISH)
 # ==================================================
 echo "[+] Updating Repositories..."
 apt-get update -q
 
 echo "[+] Installing Neofetch & Fish..."
+# Sesuai request: Install Fish standar saja
 apt-get install -y neofetch fish
 
 # ==================================================
-# 3. KONFIGURASI NEOFETCH
+# 3. KONFIGURASI TAMPILAN NEOFETCH (SIDE-BY-SIDE)
 # ==================================================
 echo "[+] Configuring Neofetch Theme..."
 mkdir -p /root/.config/neofetch
 
 # A. Buat File Logo (ASCII Custom)
-# Menggunakan format warna Neofetch ${c1}, ${c2} dst.
 cat << 'EOF' > /root/.config/neofetch/ascii.txt
 ${c1}    ⣇⣿⠘⣿⣿⣿⡿⡿⣟⣟⢟⢟⢝⠵⡝⣿⡿⢂⣼⣿⣷⣌⠩⡫⡻⣝⠹⢿⣿⣷ 
 ${c2}    ⡆⣿⣆⠱⣝⡵⣝⢅⠙⣿⢕⢕⢕⢕⢝⣥⢒⠅⣿⣿⣿⡿⣳⣌⠪⡪⣡⢑⢝⣇ 
@@ -66,7 +60,7 @@ ${c4}    ⡝⡵⡈⢟⢕⢕⢕⢕⣵⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣿�
 ${c6}    ⡝⡵⡕⡀⠑⠳⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⢉⡠⡲⡫⡪⡪⡣
 EOF
 
-# B. Buat Config Neofetch (Sesuai request)
+# B. Buat Config Neofetch (Format Side-by-Side)
 cat << 'EOF' > /root/.config/neofetch/config.conf
 print_info() {
     info title
@@ -89,7 +83,7 @@ print_info() {
     info cols
 }
 
-# Config Dasar
+# Settings Tampilan
 kernel_shorthand="on"
 distro_shorthand="off"
 os_arch="off"
@@ -129,14 +123,13 @@ col_offset="auto"
 image_backend="ascii"
 image_source="/root/.config/neofetch/ascii.txt"
 ascii_distro="auto"
-# Mapping warna: 1=Red, 2=Green, 3=Yellow, 4=Blue, 5=Magenta, 6=Cyan
-ascii_colors=(1 2 3 4 5 6) 
+ascii_colors=(1 2 3 4 5 6)
 ascii_bold="on"
 image_loop="off"
 crop_mode="normal"
 crop_offset="center"
 image_size="auto"
-gap=3
+gap=2
 yoffset=0
 xoffset=0
 background_color=
@@ -144,30 +137,20 @@ stdout="off"
 EOF
 
 # ==================================================
-# 4. AKTIFKAN MOTD (BASH & FISH)
+# 4. AKTIFKAN MOTD DI PROFILE
 # ==================================================
-
-# A. Setup untuk Bash (Default Login)
+# Script ini akan otomatis dijalankan saat login (Bash/SSH)
 cat << 'EOF' > /etc/profile.d/99-neofetch.sh
 #!/bin/bash
-# Hanya jalankan jika ada terminal interaktif
+# Cek jika neofetch ada dan ini adalah sesi interaktif
 if command -v neofetch &> /dev/null && [ -n "$PS1" ]; then
     clear
     neofetch --config /root/.config/neofetch/config.conf
 fi
 EOF
-chmod +x /etc/profile.d/99-neofetch.sh
 
-# B. Setup untuk Fish (Jika user mengetik 'fish')
-mkdir -p /root/.config/fish
-cat << 'EOF' >> /root/.config/fish/config.fish
-if status is-interactive
-    clear
-    neofetch --config /root/.config/neofetch/config.conf
-end
-EOF
+chmod +x /etc/profile.d/99-neofetch.sh
 
 echo "[✓] Installation complete."
 echo "[i] Neofetch & Fish installed."
-echo "[i] Custom ASCII & Config applied."
 echo "[i] Please logout and login again."
