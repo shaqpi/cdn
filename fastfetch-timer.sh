@@ -1,0 +1,211 @@
+#!/bin/bash
+# ==================================================
+# Fastfetch MOTD Installer + Expiry Timer
+# NAT VM by Shaq
+# ==================================================
+
+# 1. Install Fastfetch
+echo "[+] Installing Fastfetch..."
+if ! command -v fastfetch &> /dev/null; then
+    sudo add-apt-repository ppa:zhangsongcui3371/fastfetch -y
+    sudo apt update
+    sudo apt install fastfetch -y
+fi
+
+# 2. Setup Config Directory
+mkdir -p /root/.config/fastfetch
+
+# 3. Create ASCII Art File
+cat << 'EOF' > /root/.config/fastfetch/ascii.txt
+$1
+$1    ⣇⣿⠘⣿⣿⣿⡿⡿⣟⣟⢟⢟⢝⠵⡝⣿⡿⢂⣼⣿⣷⣌⠩⡫⡻⣝⠹⢿⣿⣷ 
+$2    ⡆⣿⣆⠱⣝⡵⣝⢅⠙⣿⢕⢕⢕⢕⢝⣥⢒⠅⣿⣿⣿⡿⣳⣌⠪⡪⣡⢑⢝⣇ 
+$2    ⡆⣿⣿⣦⠹⣳⣳⣕⢅⠈⢗⢕⢕⢕⢕⢕⢈⢆⠟⠋⠉⠁⠉⠉⠁⠈⠼⢐⢕⢽ 
+$3    ⡗⢰⣶⣶⣦⣝⢝⢕⢕⠅⡆⢕⢕⢕⢕⢕⣴⠏⣠⡶⠛⡉⡉⡛⢶⣦⡀⠐⣕⢕ 
+$3    ⡝⡄⢻⢟⣿⣿⣷⣕⣕⣅⣿⣔⣕⣵⣵⣿⣿⢠⣿⢠⣮⡈⣌⠨⠅⠹⣷⡀⢱⢕ 
+$4    ⡝⡵⠟⠈⢀⣀⣀⡀⠉⢿⣿⣿⣿⣿⣿⣿⣿⣼⣿⢈⡋⠴⢿⡟⣡⡇⣿⡇⡀⢕ 
+$4    ⡝⠁⣠⣾⠟⡉⡉⡉⠻⣦⣻⣿⣿⣿⣿⣿⣿⣿⣿⣧⠸⣿⣦⣥⣿⡇⡿⣰⢗⢄ 
+$5    ⠁⢰⣿⡏⣴⣌⠈⣌⠡⠈⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣬⣉⣉⣁⣄⢖⢕⢕⢕ 
+$5    ⡀⢻⣿⡇⢙⠁⠴⢿⡟⣡⡆⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣵⣵⣿ 
+$6    ⡻⣄⣻⣿⣌⠘⢿⣷⣥⣿⠇⣿⣿⣿⣿⣿⣿⠛⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿ 
+$6    ⣷⢄⠻⣿⣟⠿⠦⠍⠉⣡⣾⣿⣿⣿⣿⣿⣿⢸⣿⣦⠙⣿⣿⣿⣿⣿⣿⣿⣿⠟ 
+$7    ⡕⡑⣑⣈⣻⢗⢟⢞⢝⣻⣿⣿⣿⣿⣿⣿⣿⠸⣿⠿⠃⣿⣿⣿⣿⣿⣿⡿⠁⣠ 
+$7    ⡝⡵⡈⢟⢕⢕⢕⢕⣵⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣿⣿⣿⠿⠋⣀⣈⠙ 
+$8    ⡝⡵⡕⡀⠑⠳⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⢉⡠⡲⡫⡪⡪⡣
+$8
+EOF
+
+# 4. Create Helper Script for Expiry Timer
+#    (Fastfetch akan memanggil script ini untuk menampilkan sisa waktu)
+cat << 'EOF' > /usr/local/bin/vps-timer.sh
+#!/bin/bash
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+EXP_FILE="/etc/vps-expiry"
+if [ -f "$EXP_FILE" ]; then
+    EXP_DATE=$(cat "$EXP_FILE")
+    # Convert WIB Time String to Timestamp (Compatible with UTC system time)
+    # Kita asumsikan input di file sudah format YYYY-MM-DD HH:MM:SS
+    
+    # Deteksi Timezone Expired Date (Asumsi WIB/Asia/Jakarta +0700)
+    EXP_TS=$(date -d "$EXP_DATE" +%s 2>/dev/null)
+    NOW_TS=$(date +%s)
+
+    if [ $? -eq 0 ]; then
+        if [ "$NOW_TS" -ge "$EXP_TS" ]; then
+            echo -e "${RED}EXPIRED (Masa Aktif Habis)${NC}"
+        else
+            DIFF=$((EXP_TS - NOW_TS))
+            DAYS=$((DIFF / 86400))
+            HOURS=$(( (DIFF % 86400) / 3600 ))
+            MINUTES=$(( (DIFF % 3600) / 60 ))
+            echo -e "${GREEN}${DAYS} Hari, ${HOURS} Jam, ${MINUTES} Menit${NC}"
+        fi
+    else
+        echo -e "${RED}Error Format Tanggal${NC}"
+    fi
+else
+    echo -e "${GREEN}Lifetime / Unlimited${NC}"
+fi
+EOF
+chmod +x /usr/local/bin/vps-timer.sh
+
+# 5. Create Fastfetch Config JSON
+#    (Ditambahkan module "command" di paling bawah untuk memanggil timer)
+cat << 'EOF' > /root/.config/fastfetch/config.jsonc
+{
+  "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
+  "logo": {
+    "type": "file",
+    "source": "/root/.config/fastfetch/ascii.txt",
+    "color": {
+      "1": "red",
+      "2": "red",
+      "3": "yellow",
+      "4": "yellow",
+      "5": "green",
+      "6": "green",
+      "7": "blue",
+      "8": "blue",
+      "9": "white"
+    },
+    "padding": {
+      "top": 1,
+      "right": 3
+    }
+  },
+  "display": {
+    "separator": " "
+  },
+  "modules": [
+    "break",
+    {
+      "type": "title",
+      "color": {
+        "user": "red",
+        "at": "white",
+        "host": "blue"
+      }
+    },
+    "break",
+    {
+      "type": "os",
+      "key": "",
+      "keyColor": "blue"
+    },
+    {
+      "type": "host",
+      "key": "",
+      "keyColor": "white"
+    },
+    {
+      "type": "kernel",
+      "key": "",
+      "keyColor": "red"
+    },
+    {
+      "type": "uptime",
+      "key": "",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "packages",
+      "key": "",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "shell",
+      "key": "",
+      "keyColor": "green"
+    },
+    {
+      "type": "terminal",
+      "key": "",
+      "keyColor": "blue"
+    },
+    {
+      "type": "cpu",
+      "key": "",
+      "keyColor": "red"
+    },
+    {
+      "type": "memory",
+      "key": "",
+      "keyColor": "green",
+      "format": "{used} / {total} ({percentage})"
+    },
+    {
+      "type": "swap",
+      "key": "",
+      "keyColor": "red"
+    },
+    {
+      "type": "disk",
+      "key": "",
+      "keyColor": "blue"
+    },
+    {
+      "type": "local_ip",
+      "key": "",
+      "keyColor": "yellow"
+    },
+    {
+      "type": "public_ip",
+      "key": "",
+      "keyColor": "yellow"
+    },
+    "break",
+    {
+        "type": "command",
+        "key": "EXP",
+        "keyColor": "red",
+        "text": "/usr/local/bin/vps-timer.sh"
+    },
+    "break",
+    {
+      "type": "colors",
+      "symbol": "circle"
+    }
+  ]
+}
+EOF
+
+# 6. Disable Default Login Messages & Enable Fastfetch
+touch ~/.hushlogin
+sudo chmod -x /etc/update-motd.d/* 2>/dev/null
+
+# Add to .bashrc only if not already present
+if ! grep -q "fastfetch --config /root/.config/fastfetch/config.jsonc" /root/.bashrc; then
+    echo "" >> /root/.bashrc
+    echo "fastfetch --config /root/.config/fastfetch/config.jsonc" >> /root/.bashrc
+fi
+
+# Also add to /etc/profile so it works for all users (not just root)
+if ! grep -q "fastfetch" /etc/profile; then
+    echo "fastfetch --config /root/.config/fastfetch/config.jsonc" >> /etc/profile
+fi
+
+echo "[✓] Installation complete. Please logout and login again."
