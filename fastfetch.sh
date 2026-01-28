@@ -1,6 +1,6 @@
 #!/bin/bash
 # ==================================================
-# Fastfetch MOTD Installer (Universal Debian/Ubuntu)
+# Fastfetch MOTD Installer (Universal - Direct .deb)
 # NAT VM by Shaq
 # ==================================================
 
@@ -10,40 +10,42 @@ if [ "$EUID" -ne 0 ]; then
   exit
 fi
 
-echo "[+] Installing Dependencies..."
-apt-get update
-apt-get install -y curl wget
+echo "[+] Updating Repositories..."
+apt-get update -q
 
-echo "[+] Installing Fastfetch..."
+echo "[+] Installing Prerequisites (wget)..."
+apt-get install -y wget
 
-# Cek OS ID
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    OS=$ID
+echo "[+] Installing Fastfetch (Direct Download Method)..."
+
+# Hapus instalasi lama jika ada yang rusak
+apt-get remove -y fastfetch > /dev/null 2>&1
+
+# 1. Download file .deb terbaru langsung dari GitHub Official
+#    Ini melewati masalah "repository not found" atau "add-apt-repository missing"
+wget -O /tmp/fastfetch.deb https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb
+
+# 2. Install file .deb tersebut
+apt-get install -y /tmp/fastfetch.deb
+
+# 3. Bersihkan file installer
+rm -f /tmp/fastfetch.deb
+
+# Cek apakah terinstall
+if ! command -v fastfetch &> /dev/null; then
+    echo "[!] Gagal install fastfetch via .deb. Mencoba fallback ke snap..."
+    apt-get install -y snapd
+    snap install fastfetch
 fi
 
-if [[ "$OS" == "ubuntu" ]]; then
-    # === CARA UBUNTU (PPA) ===
-    apt-get install -y software-properties-common
-    add-apt-repository ppa:zhangsongcui3371/fastfetch -y
-    apt-get update
-    apt-get install -y fastfetch
-else
-    # === CARA DEBIAN (DIRECT DEB) ===
-    # Coba install dari repo bawaan dulu (Debian 12/13 mungkin sudah ada)
-    if ! apt-get install -y fastfetch; then
-        echo "Fastfetch not found in repo, downloading .deb..."
-        # Download versi stabil terbaru dari GitHub
-        wget -O fastfetch.deb https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb
-        apt-get install -y ./fastfetch.deb
-        rm fastfetch.deb
-    fi
-fi
+# ==================================================
+# KONFIGURASI TAMPILAN
+# ==================================================
 
-# 2. Setup Config Directory
+echo "[+] Configuring Fastfetch..."
 mkdir -p /root/.config/fastfetch
 
-# 3. Create ASCII Art File (Logo)
+# 1. Create ASCII Art File
 cat << 'EOF' > /root/.config/fastfetch/ascii.txt
 $1
 $1    ⣇⣿⠘⣿⣿⣿⡿⡿⣟⣟⢟⢟⢝⠵⡝⣿⡿⢂⣼⣿⣷⣌⠩⡫⡻⣝⠹⢿⣿⣷ 
@@ -63,7 +65,7 @@ $8    ⡝⡵⡕⡀⠑⠳⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⢉�
 $8
 EOF
 
-# 4. Create Fastfetch Config JSON
+# 2. Create Fastfetch Config JSON
 cat << 'EOF' > /root/.config/fastfetch/config.jsonc
 {
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
@@ -175,19 +177,18 @@ cat << 'EOF' > /root/.config/fastfetch/config.jsonc
 }
 EOF
 
-# 5. Disable Default Login Messages & Enable Fastfetch
+# 3. Disable Default Login Messages & Enable Fastfetch
 touch ~/.hushlogin
 chmod -x /etc/update-motd.d/* 2>/dev/null
 
-# Add to .bashrc only if not already present
-if ! grep -q "fastfetch --config /root/.config/fastfetch/config.jsonc" /root/.bashrc; then
-    echo "" >> /root/.bashrc
-    echo "fastfetch --config /root/.config/fastfetch/config.jsonc" >> /root/.bashrc
-fi
+# Clean up existing fastfetch lines to prevent duplicates
+sed -i '/fastfetch/d' /root/.bashrc
+sed -i '/fastfetch/d' /etc/profile
 
-# Also add to /etc/profile so it works for all users (not just root)
-if ! grep -q "fastfetch" /etc/profile; then
-    echo "fastfetch --config /root/.config/fastfetch/config.jsonc" >> /etc/profile
-fi
+# Add to .bashrc (for interactive root login)
+echo "fastfetch --config /root/.config/fastfetch/config.jsonc" >> /root/.bashrc
+
+# Add to /etc/profile (for all users)
+echo "if [ -n \"\$PS1\" ]; then fastfetch --config /root/.config/fastfetch/config.jsonc; fi" >> /etc/profile
 
 echo "[✓] Installation complete. Please logout and login again."
