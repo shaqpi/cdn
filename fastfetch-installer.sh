@@ -119,12 +119,16 @@ while true; do
             done
             if [ -n "$RAW_ASCII" ]; then
                 USE_CUSTOM_ASCII=true
-                # Auto-apply color tags bergilir $1-$8
                 CUSTOM_ASCII_CONTENT=""
                 COLOR_IDX=1
                 while IFS= read -r line; do
-                    CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}\$${COLOR_IDX}${line}"$'\n'
-                    COLOR_IDX=$(( COLOR_IDX % 8 + 1 ))
+                    # Cek apakah baris sudah punya color tag $1-$8
+                    if [[ "$line" =~ ^\$[1-8] ]]; then
+                        CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}${line}"$'\n'
+                    else
+                        CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}\$${COLOR_IDX}${line}"$'\n'
+                        COLOR_IDX=$(( COLOR_IDX % 8 + 1 ))
+                    fi
                 done <<< "$RAW_ASCII"
                 info "ASCII"  "${GREEN}Pasted successfully${RESET}"
             else
@@ -140,12 +144,16 @@ while true; do
             read CUSTOM_ASCII_PATH < /dev/tty
             printf "${RESET}"
             if [ -f "$CUSTOM_ASCII_PATH" ]; then
-                # Auto-apply color tags bergilir $1-$8
                 CUSTOM_ASCII_CONTENT=""
                 COLOR_IDX=1
                 while IFS= read -r line; do
-                    CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}\$${COLOR_IDX}${line}"$'\n'
-                    COLOR_IDX=$(( COLOR_IDX % 8 + 1 ))
+                    # Cek apakah baris sudah punya color tag $1-$8
+                    if [[ "$line" =~ ^\$[1-8] ]]; then
+                        CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}${line}"$'\n'
+                    else
+                        CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}\$${COLOR_IDX}${line}"$'\n'
+                        COLOR_IDX=$(( COLOR_IDX % 8 + 1 ))
+                    fi
                 done < "$CUSTOM_ASCII_PATH"
                 USE_CUSTOM_ASCII=true
                 info "ASCII"  "${GREEN}Loaded from ${WHITE}${BOLD}$CUSTOM_ASCII_PATH${RESET}"
@@ -324,7 +332,7 @@ ok "Fish shell installed"
 # ══ STEP 3 ════════════════════════════════════════
 step 3 "Configuring Fish shell"
 
-fish -c "set -U fish_greeting ''" 2>/dev/null || true
+fish --no-config -c "set -U fish_greeting ''" 2>/dev/null || true
 
 mkdir -p /root/.config/fish
 cat > /root/.config/fish/config.fish << 'FISHEOF'
@@ -628,4 +636,4 @@ echo -e "${GREEN}${BOLD}${BOT}${RESET}"
 echo ""
 echo -e "${M}  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
-# yardanshaq
+# @yardanshaql
