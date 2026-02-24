@@ -20,7 +20,7 @@ echo "[2/4] Writing Fastfetch config..."
 mkdir -p /root/.config/fastfetch
 
 # ASCII ART
-cat > /root/.config/fastfetch/ascii.txt << 'EOF'
+cat > /root/.config/fastfetch/ascii.txt << 'ASCIIEOF'
 $1
 $1   ⣇⣿⠘⣿⣿⣿⡿⡿⣟⣟⢟⢟⢝⠵⡝⣿⡿⢂⣼⣿⣷⣌⠩⡫⡻⣝⠹⢿⣿⣷ 
 $2   ⡆⣿⣆⠱⣝⡵⣝⢅⠙⣿⢕⢕⢕⢕⢝⣥⢒⠅⣿⣿⣿⡿⣳⣌⠪⡪⣡⢑⢝⣇ 
@@ -37,11 +37,32 @@ $7   ⡕⡑⣑⣈⣻⢗⢟⢞⢝⣻⣿⣿⣿⣿⣿⣿⣿⠸⣿⠿⠃⣿⣿⣿⣿
 $7   ⡝⡵⡈⢟⢕⢕⢕⢕⣵⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣶⣿⣿⣿⣿⣿⠿⠋⣀⣈⠙ 
 $8   ⡝⡵⡕⡀⠑⠳⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⢉⡠⡲⡫⡪⡪⡣
 $8
-EOF
+ASCIIEOF
 
-# CONFIG JSONC
-cat > /root/.config/fastfetch/config.jsonc << 'EOF'
-{
+# CONFIG JSONC via Python3 agar unicode Nerd Font icon tidak hilang
+python3 << 'PYEOF'
+import os
+
+icons = {
+    "os":         "\U000F0EC7",
+    "host":       "\U000F07C0",
+    "kernel":     "\U000F0322",
+    "uptime":     "\U000F051F",
+    "packages":   "\U000F03D6",
+    "shell":      "\U000F0193",
+    "resolution": "\U000F0379",
+    "terminal":   "\U000F0273",
+    "cpu":        "\U000F04BC",
+    "gpu":        "\U000F035B",
+    "memory":     "\U000F0619",
+    "swap":       "\U000F0BD4",
+    "disk":       "\U000F02CA",
+    "local_ip":   "\U000F0A5F",
+    "public_ip":  "\U000F0789",
+    "locale":     "\U000F05CA",
+}
+
+config = """{
   "$schema": "https://github.com/fastfetch-cli/fastfetch/raw/dev/doc/json_schema.json",
   "logo": {
     "type": "file",
@@ -78,83 +99,83 @@ cat > /root/.config/fastfetch/config.jsonc << 'EOF'
     "break",
     {
       "type": "os",
-      "key": "",
+      "key": "ICON_os",
       "keyColor": "#89DCEB"
     },
     {
       "type": "host",
-      "key": "",
+      "key": "ICON_host",
       "keyColor": "#CDD6F4"
     },
     {
       "type": "kernel",
-      "key": "",
+      "key": "ICON_kernel",
       "keyColor": "#F2CDCD"
     },
     {
       "type": "uptime",
-      "key": "",
+      "key": "ICON_uptime",
       "keyColor": "#FAB387"
     },
     {
       "type": "packages",
-      "key": "",
+      "key": "ICON_packages",
       "keyColor": "#F9E2AF"
     },
     {
       "type": "shell",
-      "key": "",
+      "key": "ICON_shell",
       "keyColor": "#A6E3A1"
     },
     {
       "type": "resolution",
-      "key": "",
+      "key": "ICON_resolution",
       "keyColor": "#94E2D5"
     },
     {
       "type": "terminal",
-      "key": "",
+      "key": "ICON_terminal",
       "keyColor": "#89DCEB"
     },
     {
       "type": "cpu",
-      "key": "",
+      "key": "ICON_cpu",
       "keyColor": "#F5C2E7"
     },
     {
       "type": "gpu",
-      "key": "",
+      "key": "ICON_gpu",
       "keyColor": "#89DCEB"
     },
     {
       "type": "memory",
-      "key": "",
+      "key": "ICON_memory",
       "keyColor": "#A6E3A1",
       "format": "{used} / {total} ({percentage})"
     },
     {
       "type": "swap",
-      "key": "",
+      "key": "ICON_swap",
       "keyColor": "#F2CDCD"
     },
     {
       "type": "disk",
-      "key": "",
+      "key": "ICON_disk",
       "keyColor": "#94E2D5"
     },
     {
       "type": "local_ip",
-      "key": "",
+      "key": "ICON_local_ip",
       "keyColor": "#FAB387"
     },
     {
       "type": "public_ip",
-      "key": "",
+      "key": "ICON_public_ip",
       "keyColor": "#F9E2AF"
     },
     {
       "type": "locale",
-      "key": "",
+      "key": "ICON_locale",
       "keyColor": "#CDD6F4"
     },
     "break",
@@ -163,8 +184,17 @@ cat > /root/.config/fastfetch/config.jsonc << 'EOF'
       "symbol": "circle"
     }
   ]
-}
-EOF
+}"""
+
+for key, icon in icons.items():
+    config = config.replace(f"ICON_{key}", icon)
+
+path = "/root/.config/fastfetch/config.jsonc"
+with open(path, "w", encoding="utf-8") as f:
+    f.write(config)
+
+print(f"[OK] Config written to {path}")
+PYEOF
 
 # ── STARTUP CONFIG ───────────────────────────────────
 echo ""
@@ -175,7 +205,6 @@ chmod -x /etc/update-motd.d/*
 
 if ! grep -q "fastfetch" ~/.bashrc; then
     echo "" >> ~/.bashrc
-    echo "# Launch fastfetch on login" >> ~/.bashrc
     echo "fastfetch" >> ~/.bashrc
 fi
 
@@ -207,13 +236,9 @@ echo "Swap status:"
 swapon --show
 free -h
 
-# ── DONE ─────────────────────────────────────────────
 echo ""
 echo "================================================"
-echo "  Selesai! Jalankan perintah berikut untuk"
-echo "  langsung melihat hasilnya:"
-echo ""
-echo "  source ~/.bashrc"
-echo "  atau"
-echo "  fastfetch"
+echo "  Selesai!"
+echo "  Jalankan: source ~/.bashrc"
+echo "  atau test: fastfetch"
 echo "================================================"
