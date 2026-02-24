@@ -3,20 +3,34 @@
 set -e
 
 echo "================================================"
-echo "  Install Fastfetch + Config + Swap"
+echo "  Install Fastfetch + Fish + Config + Swap"
 echo "  Ubuntu 24.04"
 echo "================================================"
 
 # ── INSTALL FASTFETCH ────────────────────────────────
 echo ""
-echo "[1/4] Installing Fastfetch..."
+echo "[1/5] Installing Fastfetch..."
 add-apt-repository ppa:zhangsongcui3371/fastfetch -y
 apt update
 apt install -y fastfetch
 
-# ── CONFIG DIR ───────────────────────────────────────
+# ── INSTALL FISH ─────────────────────────────────────
 echo ""
-echo "[2/4] Writing Fastfetch config..."
+echo "[2/5] Installing Fish shell..."
+apt install -y fish
+
+# Matikan welcome message fish
+fish -c "set -U fish_greeting ''"
+
+# Config fish: fastfetch on start
+mkdir -p /root/.config/fish
+cat > /root/.config/fish/config.fish << 'FISHEOF'
+fastfetch
+FISHEOF
+
+# ── CONFIG FASTFETCH ─────────────────────────────────
+echo ""
+echo "[3/5] Writing Fastfetch config..."
 mkdir -p /root/.config/fastfetch
 
 # ASCII ART
@@ -41,8 +55,6 @@ ASCIIEOF
 
 # CONFIG JSONC via Python3 agar unicode Nerd Font icon tidak hilang
 python3 << 'PYEOF'
-import os
-
 icons = {
     "os":         "\U000F0EC7",
     "host":       "\U000F07C0",
@@ -198,24 +210,26 @@ PYEOF
 
 # ── STARTUP CONFIG ───────────────────────────────────
 echo ""
-echo "[3/4] Configuring startup..."
+echo "[4/5] Configuring startup..."
 
 touch ~/.hushlogin
 chmod -x /etc/update-motd.d/*
 
-if ! grep -q "fastfetch" ~/.bashrc; then
+# .bashrc: langsung masuk fish (fastfetch sudah dihandle config.fish)
+if ! grep -q "exec fish" ~/.bashrc; then
     echo "" >> ~/.bashrc
-    echo "fastfetch" >> ~/.bashrc
+    echo "# Launch fish shell on login" >> ~/.bashrc
+    echo "exec fish" >> ~/.bashrc
 fi
 
 # ── SWAP ─────────────────────────────────────────────
 echo ""
-echo "[4/4] Creating 4G Swap..."
+echo "[5/5] Creating 2G Swap..."
 
 if swapon --show | grep -q "/swapfile"; then
     echo "Swapfile already exists, skipping..."
 else
-    fallocate -l 4G /swapfile
+    fallocate -l 2G /swapfile
     chmod 600 /swapfile
     mkswap /swapfile
     swapon /swapfile
@@ -239,6 +253,5 @@ free -h
 echo ""
 echo "================================================"
 echo "  Selesai!"
-echo "  Jalankan: source ~/.bashrc"
-echo "  atau test: fastfetch"
+echo "  Login ulang atau jalankan: exec fish"
 echo "================================================"
