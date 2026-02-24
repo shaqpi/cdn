@@ -34,14 +34,6 @@ mid() {
     printf "${M}║ ${color}${BOLD}%s${RESET}%${pad}s║\n" "$text" ""
 }
 
-midsep() {
-    local color="$1"
-    local text="$2"
-    local tlen=${#text}
-    local pad=$(( BW - tlen - 1 ))
-    printf "${M}║ ${color}%-*s${RESET}║\n" "$BW" " $text"
-}
-
 step() {
     echo ""
     echo -e "${M}${BG_BLUE}${WHITE}${BOLD} STEP $1/$TOTAL   $2 ${RESET}"
@@ -95,6 +87,25 @@ fi
 
 info "Detected OS" "${WHITE}${BOLD}$OS_NAME${RESET}"
 info "Distro ID"   "${WHITE}${BOLD}$OS_ID${RESET}"
+echo ""
+
+# ── ASK SWAP SIZE ──────────────────────────────────
+echo -e "${M}  ${CYAN}${BOLD}┌──────────────────────────────────────────────┐${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}│         How many GB of swap do you want?     │${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}│         Enter 0 to skip swap setup           │${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}└──────────────────────────────────────────────┘${RESET}"
+echo ""
+while true; do
+    printf "${M}  ${BOLD}${CYAN}Swap Size (GB)  : ${WHITE}"
+    read SWAP_GB < /dev/tty
+    printf "${RESET}"
+    if [[ "$SWAP_GB" =~ ^[0-9]+$ ]]; then
+        break
+    else
+        echo -e "${M}${BG_RED}${WHITE}${BOLD} ✗  Please enter a valid number ${RESET}"
+        echo ""
+    fi
+done
 echo ""
 
 # ── INSTALL FASTFETCH FROM GITHUB ──────────────────
@@ -448,25 +459,62 @@ ok "MOTD disabled"
 # ══ STEP 6 ════════════════════════════════════════
 step 6 "Setting up Swap"
 
-if swapon --show | grep -q "/swapfile"; then
+if [ "$SWAP_GB" -eq 0 ]; then
+    warn "Swap skipped by user"
+    echo ""
+elif swapon --show 2>/dev/null | grep -q "/swapfile"; then
     warn "Swapfile already exists, skipping"
     echo ""
 else
-    log "Allocating 2G swapfile..."
-    fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
-    chmod 600 /swapfile
-    log "Formatting swap..."
-    mkswap /swapfile -q
-    swapon /swapfile
-    grep -q "/swapfile" /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
-    grep -q "vm.swappiness" /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
-    sysctl -p -q
+    SWAP_OK=true
+    SWAP_BYTES=$(( SWAP_GB * 1024 ))
 
-    info "Size"       "${WHITE}${BOLD}2G${RESET}"
-    info "Swappiness" "${WHITE}${BOLD}10${RESET}"
-    info "fstab"      "${GREEN}updated${RESET}"
+    # Cek apakah environment support swap (OpenVZ/LXC)
+    if [ ! -w /proc/sys/vm/swappiness ] 2>/dev/null; then
+        warn "Swap not supported on this environment (OpenVZ/LXC), skipping"
+        SWAP_OK=false
+    fi
 
-    ok "Swap created"
+    if [ "$SWAP_OK" = true ]; then
+        log "Allocating ${SWAP_GB}G swapfile..."
+        if ! fallocate -l ${SWAP_GB}G /swapfile 2>/dev/null; then
+            log "fallocate failed, trying dd..."
+            if ! dd if=/dev/zero of=/swapfile bs=1M count=${SWAP_BYTES} status=none 2>/dev/null; then
+                warn "Could not allocate swapfile, skipping swap setup"
+                SWAP_OK=false
+            fi
+        fi
+    fi
+
+    if [ "$SWAP_OK" = true ]; then
+        chmod 600 /swapfile
+        log "Formatting swap..."
+        if ! mkswap /swapfile 2>/dev/null; then
+            warn "mkswap failed (not supported on this VPS), skipping"
+            rm -f /swapfile
+            SWAP_OK=false
+        fi
+    fi
+
+    if [ "$SWAP_OK" = true ]; then
+        if ! swapon /swapfile 2>/dev/null; then
+            warn "swapon failed, skipping swap setup"
+            rm -f /swapfile
+            SWAP_OK=false
+        fi
+    fi
+
+    if [ "$SWAP_OK" = true ]; then
+        grep -q "/swapfile" /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+        grep -q "vm.swappiness" /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
+        sysctl -p -q 2>/dev/null || true
+
+        info "Size"       "${WHITE}${BOLD}${SWAP_GB}G${RESET}"
+        info "Swappiness" "${WHITE}${BOLD}10${RESET}"
+        info "fstab"      "${GREEN}updated${RESET}"
+
+        ok "Swap created"
+    fi
 fi
 
 # ══ STEP 7 ════════════════════════════════════════
@@ -497,3 +545,4 @@ echo -e "${GREEN}${BOLD}${BOT}${RESET}"
 echo ""
 echo -e "${M}  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
+# @shaqpi
