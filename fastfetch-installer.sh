@@ -111,15 +111,21 @@ while true; do
             echo ""
             echo -e "${M}  ${YELLOW}⚠  Paste your ASCII art below.${RESET}"
             echo -e "${M}  ${DIM}   When done, press Enter then type ${WHITE}END${DIM} and press Enter.${RESET}"
-            echo -e "${M}  ${DIM}   Color tags: use ${WHITE}\$1${DIM} to ${WHITE}\$8${DIM} at the start of a line to colorize it.${RESET}"
             echo ""
-            CUSTOM_ASCII_CONTENT=""
+            RAW_ASCII=""
             while IFS= read -r line < /dev/tty; do
                 [ "$line" = "END" ] && break
-                CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}${line}"$'\n'
+                RAW_ASCII="${RAW_ASCII}${line}"$'\n'
             done
-            if [ -n "$CUSTOM_ASCII_CONTENT" ]; then
+            if [ -n "$RAW_ASCII" ]; then
                 USE_CUSTOM_ASCII=true
+                # Auto-apply color tags bergilir $1-$8
+                CUSTOM_ASCII_CONTENT=""
+                COLOR_IDX=1
+                while IFS= read -r line; do
+                    CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}\$${COLOR_IDX}${line}"$'\n'
+                    COLOR_IDX=$(( COLOR_IDX % 8 + 1 ))
+                done <<< "$RAW_ASCII"
                 info "ASCII"  "${GREEN}Pasted successfully${RESET}"
             else
                 warn "Empty input — using default ASCII"
@@ -128,15 +134,19 @@ while true; do
             ;;
         2)
             echo ""
-            echo -e "${M}  ${YELLOW}  Tip: ${RESET}Make sure the file is a plain .txt file"
             echo -e "${M}  ${DIM}  Example: ${WHITE}/root/myascii.txt${RESET}"
-            echo -e "${M}  ${DIM}  Color tags: use ${WHITE}\$1${DIM} to ${WHITE}\$8${DIM} at the start of a line to colorize it.${RESET}"
             echo ""
             printf "${M}  ${BOLD}${CYAN}File Path       : ${WHITE}"
             read CUSTOM_ASCII_PATH < /dev/tty
             printf "${RESET}"
             if [ -f "$CUSTOM_ASCII_PATH" ]; then
-                CUSTOM_ASCII_CONTENT=$(cat "$CUSTOM_ASCII_PATH")
+                # Auto-apply color tags bergilir $1-$8
+                CUSTOM_ASCII_CONTENT=""
+                COLOR_IDX=1
+                while IFS= read -r line; do
+                    CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}\$${COLOR_IDX}${line}"$'\n'
+                    COLOR_IDX=$(( COLOR_IDX % 8 + 1 ))
+                done < "$CUSTOM_ASCII_PATH"
                 USE_CUSTOM_ASCII=true
                 info "ASCII"  "${GREEN}Loaded from ${WHITE}${BOLD}$CUSTOM_ASCII_PATH${RESET}"
             else
