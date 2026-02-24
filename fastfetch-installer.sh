@@ -234,25 +234,23 @@ esac
 ok "Fish shell installed"
 
 # ══ STEP 3 ════════════════════════════════════════
-step 3 "Configuring Fish shell"
+step 3 "Configuring shell"
 
+# Disable fish greeting (in case user manually uses fish)
 fish -c "set -U fish_greeting ''" 2>/dev/null || true
 
-mkdir -p /root/.config/fish
-cat > /root/.config/fish/config.fish << 'FISHEOF'
-fastfetch
-FISHEOF
-
-if ! grep -q "exec fish" ~/.bashrc 2>/dev/null; then
+# Add fastfetch and fish to .bashrc (runs on bash startup)
+if ! grep -q "fastfetch" ~/.bashrc 2>/dev/null; then
     echo "" >> ~/.bashrc
-    echo "exec fish" >> ~/.bashrc
+    echo "# Run fastfetch on login" >> ~/.bashrc
+    echo "fastfetch" >> ~/.bashrc
+    echo "fish" >> ~/.bashrc
 fi
 
-info "Greeting"  "${GREEN}disabled${RESET}"
-info "Startup"   "${GREEN}fastfetch on login${RESET}"
-info "Shell"     "${GREEN}auto-switch via .bashrc${RESET}"
+info "Shell"    "${GREEN}bash (default)${RESET}"
+info "Startup"  "${GREEN}fastfetch + fish added to .bashrc${RESET}"
 
-ok "Fish configured"
+ok "Shell configured"
 
 # ══ STEP 4 ════════════════════════════════════════
 step 4 "Writing Fastfetch ASCII art and config"
@@ -491,9 +489,6 @@ printf "${M}║  ${CYAN}${BOLD}%-14s${RESET}  :  ${WHITE}${BOLD}%-$((BW - 22))s$
 printf "${M}║  ${CYAN}${BOLD}%-14s${RESET}  :  ${WHITE}${BOLD}%-$((BW - 22))s${RESET}║\n" "Fastfetch" "$FF_VER"
 printf "${M}║  ${CYAN}${BOLD}%-14s${RESET}  :  ${WHITE}${BOLD}%-$((BW - 22))s${RESET}║\n" "Fish"      "$FISH_VER"
 printf "${M}║  ${CYAN}${BOLD}%-14s${RESET}  :  ${WHITE}${BOLD}%-$((BW - 22))s${RESET}║\n" "Swap"      "$SWAP_SIZE"
-echo -e "${GREEN}${BOLD}${SEP}${RESET}"
-mid "${YELLOW}" "  Run: exec fish"
-echo -e "${GREEN}${BOLD}${BOT}${RESET}"
 echo ""
 echo -e "${M}  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
