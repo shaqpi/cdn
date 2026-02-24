@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ "$EUID" -ne 0 ]; then
+    exec sudo bash "$0" "$@"
+fi
+
 set -e
 
 RED='\033[0;31m'
