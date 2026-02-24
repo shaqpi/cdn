@@ -16,44 +16,46 @@ WHITE='\033[1;37m'
 BOLD='\033[1m'
 DIM='\033[2m'
 BG_BLUE='\033[44m'
-BG_CYAN='\033[46m'
 BG_GREEN='\033[42m'
 BG_RED='\033[41m'
 RESET='\033[0m'
 
 clear
 
-# ── Helpers ────────────────────────────────────────
-L="  "  # left margin (2 spaces)
+# ── Margin & width ─────────────────────────────────
+M="  "
+DIV="${M}  ──────────────────────────────────────────────"
 
+# ── Helpers ────────────────────────────────────────
 step() {
     echo ""
-    echo -e "${L}${BG_BLUE}${WHITE}${BOLD} STEP $1/3 ${RESET} ${BOLD}${CYAN}$2${RESET}"
-    echo -e "${L}${DIM}${CYAN}  ────────────────────────────────────────────${RESET}"
+    echo -e "${M}${BG_BLUE}${WHITE}${BOLD} STEP $1/3 ${RESET} ${BOLD}${CYAN}$2${RESET}"
+    echo -e "${DIM}${CYAN}${DIV}${RESET}"
 }
 
 ok() {
-    echo -e "${L}${BG_GREEN}${WHITE}${BOLD}  ✓  ${RESET} ${GREEN}${BOLD}$1${RESET}"
+    echo -e "${M}  ${BG_GREEN}${WHITE}${BOLD} ✓ ${RESET} ${GREEN}${BOLD}$1${RESET}"
     echo ""
     sleep 0.3
 }
 
 info() {
-    printf "${L}  ${CYAN}›${RESET}  %-10s${RESET}  %b\n" "$1" "$2"
+    printf "${M}  ${CYAN}›${RESET}  ${BOLD}%-10s${RESET}  %b\n" "$1" "$2"
 }
 
 err() {
-    echo -e "${L}${BG_RED}${WHITE}${BOLD}  ✗  ${RESET} ${RED}${BOLD}$1${RESET}"
+    echo -e "${M}  ${BG_RED}${WHITE}${BOLD} ✗ ${RESET} ${RED}${BOLD}$1${RESET}"
     echo ""
 }
 
 # ── Banner ─────────────────────────────────────────
 echo ""
-echo -e "${L}${BG_CYAN}${WHITE}${BOLD}  ╔══════════════════════════════════════════╗  ${RESET}"
-echo -e "${L}${BG_CYAN}${WHITE}${BOLD}  ║      SSH Root Login Configurator         ║  ${RESET}"
-echo -e "${L}${BG_CYAN}${WHITE}${BOLD}  ╚══════════════════════════════════════════╝  ${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}╔══════════════════════════════════════════════╗${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}║        SSH Root Login Configurator           ║${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}║         Auto-Elevated  •  Full Setup         ║${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}╚══════════════════════════════════════════════╝${RESET}"
 echo ""
-echo -e "${L}  ${DIM}${CYAN}▸ Started at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
+echo -e "${M}  ${DIM}${CYAN}▸ Started at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 
 # ══ STEP 1 ════════════════════════════════════════
 step 1 "Enabling PermitRootLogin"
@@ -62,10 +64,10 @@ SSHD_CONFIG="/etc/ssh/sshd_config"
 info "File"   "${WHITE}${BOLD}$SSHD_CONFIG${RESET}"
 
 if grep -q "^PermitRootLogin" "$SSHD_CONFIG"; then
-    info "Status" "${YELLOW}Existing entry found${RESET} — overwriting"
+    info "Status" "${YELLOW}Existing entry${RESET} — overwriting"
     sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' "$SSHD_CONFIG"
 elif grep -q "^#PermitRootLogin" "$SSHD_CONFIG"; then
-    info "Status" "${YELLOW}Commented entry found${RESET} — uncommenting"
+    info "Status" "${YELLOW}Commented entry${RESET} — uncommenting"
     sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' "$SSHD_CONFIG"
 else
     info "Status" "${YELLOW}No entry found${RESET} — appending"
@@ -89,14 +91,14 @@ ok "SSH service restarted"
 step 3 "Set root password"
 
 echo ""
-echo -e "${L}  ${BG_BLUE}${WHITE}${BOLD}  ╔══════════════════════════════════════════╗  ${RESET}"
-echo -e "${L}  ${BG_BLUE}${WHITE}${BOLD}  ║   Enter a new password for root account  ║  ${RESET}"
-echo -e "${L}  ${BG_BLUE}${WHITE}${BOLD}  ╚══════════════════════════════════════════╝  ${RESET}"
-echo -e "${L}  ${YELLOW}⚠  Password will be visible as you type${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}╔══════════════════════════════════════════════╗${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}║    Enter a new password for root account     ║${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}╚══════════════════════════════════════════════╝${RESET}"
+echo -e "${M}  ${YELLOW}⚠  Password will be visible as you type${RESET}"
 echo ""
 
 while true; do
-    echo -ne "${L}  ${BOLD}${CYAN}New Password  :  ${WHITE}"
+    echo -ne "${M}  ${BOLD}${CYAN}New Password  : ${WHITE}"
     read PASSWORD < /dev/tty
     echo -ne "${RESET}"
     if [ -z "$PASSWORD" ]; then
@@ -119,19 +121,19 @@ PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
 
 # ══ DONE ══════════════════════════════════════════
 echo ""
-echo -e "${L}${BG_GREEN}${WHITE}${BOLD}  ╔══════════════════════════════════════════╗  ${RESET}"
-echo -e "${L}${BG_GREEN}${WHITE}${BOLD}  ║                  All Done!               ║  ${RESET}"
-echo -e "${L}${BG_GREEN}${WHITE}${BOLD}  ╚══════════════════════════════════════════╝  ${RESET}"
+echo -e "${M}  ${GREEN}${BOLD}╔══════════════════════════════════════════════╗${RESET}"
+echo -e "${M}  ${GREEN}${BOLD}║                  All Done! 🎉                ║${RESET}"
+echo -e "${M}  ${GREEN}${BOLD}╚══════════════════════════════════════════════╝${RESET}"
 echo ""
-echo -e "${L}  ${BOLD}${CYAN}Summary${RESET}"
-echo -e "${L}  ${DIM}${CYAN}────────────────────────────────────────────${RESET}"
-printf "${L}  ${GREEN}✓${RESET}  %-18s:  ${GREEN}${BOLD}%s${RESET}\n" "SSH Root Login" "Enabled"
-printf "${L}  ${GREEN}✓${RESET}  %-18s:  ${GREEN}${BOLD}%s${RESET}\n" "Root Password" "Updated"
-printf "${L}  ${GREEN}✓${RESET}  %-18s:  ${GREEN}${BOLD}%s${RESET}\n" "SSH Service" "Restarted"
-printf "${L}  ${GREEN}✓${RESET}  %-18s:  ${WHITE}${BOLD}%s${RESET}\n" "Public IP" "$PUBLIC_IP"
+echo -e "${M}  ${BOLD}${CYAN}Summary${RESET}"
+echo -e "${DIM}${CYAN}${DIV}${RESET}"
+printf "${M}  ${GREEN}✓${RESET}  %-16s  :  ${GREEN}${BOLD}%s${RESET}\n" "SSH Root Login" "Enabled"
+printf "${M}  ${GREEN}✓${RESET}  %-16s  :  ${GREEN}${BOLD}%s${RESET}\n" "Root Password" "Updated"
+printf "${M}  ${GREEN}✓${RESET}  %-16s  :  ${GREEN}${BOLD}%s${RESET}\n" "SSH Service" "Restarted"
+printf "${M}  ${GREEN}✓${RESET}  %-16s  :  ${WHITE}${BOLD}%s${RESET}\n" "Public IP" "$PUBLIC_IP"
 echo ""
-echo -e "${L}  ${BOLD}${WHITE}Connect via SSH:${RESET}"
-echo -e "${L}  ${CYAN}${BOLD}  \$ ssh root@${PUBLIC_IP}${RESET}"
+echo -e "${M}  ${BOLD}${WHITE}Connect via SSH:${RESET}"
+echo -e "${M}  ${CYAN}${BOLD}  \$ ssh root@${PUBLIC_IP}${RESET}"
 echo ""
-echo -e "${L}  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
+echo -e "${M}  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
