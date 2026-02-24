@@ -38,52 +38,57 @@ fail() {
 TOTAL=7
 
 # ── DETECT OS ────────────────────────────────────────
-detect_os() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        OS_ID="${ID,,}"
-        OS_ID_LIKE="${ID_LIKE,,}"
-        OS_VERSION="$VERSION_ID"
-        OS_NAME="$PRETTY_NAME"
-    else
-        fail "Cannot detect OS. /etc/os-release not found."
-    fi
-}
-
-detect_os
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+    OS_ID="${ID,,}"
+    OS_ID_LIKE="${ID_LIKE,,}"
+    OS_NAME="$PRETTY_NAME"
+else
+    fail "Cannot detect OS. /etc/os-release not found."
+fi
 
 echo -e "  ${BOLD}Detected OS :${RESET} $OS_NAME"
 echo -e "  ${BOLD}Distro ID   :${RESET} $OS_ID"
 echo ""
 
-# ── INSTALL FASTFETCH FROM GITHUB ────────────────────
+# ── INSTALL FASTFETCH FROM GITHUB DIRECT URL ─────────
 install_fastfetch_deb_latest() {
     local ARCH
     ARCH=$(dpkg --print-architecture)
 
-    # Map dpkg arch ke nama file fastfetch GitHub release
     case "$ARCH" in
-        amd64)   GH_ARCH="amd64" ;;
-        arm64)   GH_ARCH="aarch64" ;;
-        armhf)   GH_ARCH="armv7" ;;
-        i386)    GH_ARCH="i386" ;;
-        *)       GH_ARCH="$ARCH" ;;
+        amd64)  GH_ARCH="amd64"   ;;
+        arm64)  GH_ARCH="aarch64" ;;
+        armhf)  GH_ARCH="armv7"   ;;
+        i386)   GH_ARCH="i386"    ;;
+        *)      GH_ARCH="$ARCH"   ;;
     esac
 
-    warn "Fetching latest fastfetch release for linux-${GH_ARCH}..."
+    warn "Fetching latest fastfetch version tag..."
 
-    local DEB_URL
-    DEB_URL=$(curl -fsSL https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
-        | grep "browser_download_url" \
-        | grep "linux-${GH_ARCH}\.deb" \
-        | head -1 \
-        | cut -d '"' -f 4)
+    # Ambil versi terbaru via redirect (tidak perlu parse JSON)
+    local LATEST_VERSION
+    LATEST_VERSION=$(curl -fsSL -o /dev/null -w "%{url_effective}" \
+        https://github.com/fastfetch-cli/fastfetch/releases/latest \
+        | grep -oP '(?<=tag/)[^/]+$')
 
-    if [ -z "$DEB_URL" ]; then
-        fail "Could not find fastfetch .deb for arch: ${GH_ARCH}. Check: https://github.com/fastfetch-cli/fastfetch/releases"
+    if [ -z "$LATEST_VERSION" ]; then
+        fail "Could not fetch latest fastfetch version from GitHub."
     fi
 
-    warn "Downloading: $DEB_URL"
+    local DEB_URL="https://github.com/fastfetch-cli/fastfetch/releases/download/${LATEST_VERSION}/fastfetch-linux-${GH_ARCH}.deb"
+
+    warn "Version  : $LATEST_VERSION"
+    warn "Arch     : $GH_ARCH"
+    warn "URL      : $DEB_URL"
+
+    # Cek URL valid dulu
+    local HTTP_CODE
+    HTTP_CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" "$DEB_URL")
+    if [ "$HTTP_CODE" != "200" ]; then
+        fail "Download URL returned HTTP $HTTP_CODE. URL: $DEB_URL"
+    fi
+
     local TMP_DEB
     TMP_DEB=$(mktemp /tmp/fastfetch_XXXXXX.deb)
     curl -fsSL "$DEB_URL" -o "$TMP_DEB"
@@ -103,8 +108,7 @@ case "$OS_ID" in
         apt-get install -y -q fastfetch
         ;;
     debian)
-        apt-get update -qq
-        apt-get install -y -q curl
+        apt-get install -y -q curl 2>/dev/null || true
         install_fastfetch_deb_latest
         ;;
     fedora)
@@ -114,13 +118,7 @@ case "$OS_ID" in
         dnf install -y -q epel-release 2>/dev/null || true
         dnf install -y -q fastfetch 2>/dev/null || {
             warn "fastfetch not in repo, installing from GitHub..."
-            ARCH=$(uname -m)
-            RPM_URL=$(curl -fsSL https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
-                | grep "browser_download_url" \
-                | grep "linux-${ARCH}\.rpm" \
-                | head -1 \
-                | cut -d '"' -f 4)
-            dnf install -y "$RPM_URL"
+            install_fastfetch_deb_latest
         }
         ;;
     arch | manjaro | endeavouros)
@@ -136,14 +134,11 @@ case "$OS_ID" in
     *)
         if echo "$OS_ID_LIKE" | grep -q "debian\|ubuntu"; then
             warn "Unknown Debian-based distro, trying GitHub release..."
-            apt-get update -qq
-            apt-get install -y -q curl
+            apt-get install -y -q curl 2>/dev/null || true
             install_fastfetch_deb_latest
         elif echo "$OS_ID_LIKE" | grep -q "rhel\|fedora"; then
-            warn "Unknown RHEL-based distro, trying dnf..."
             dnf install -y -q fastfetch
         elif command -v pacman &>/dev/null; then
-            warn "Unknown Arch-based distro, trying pacman..."
             pacman -Sy --noconfirm fastfetch
         else
             fail "Unsupported distro: $OS_ID. Please install fastfetch manually."
@@ -387,7 +382,7 @@ chmod -x /etc/update-motd.d/* 2>/dev/null || true
 ok "MOTD disabled"
 
 # ── STEP 6: SWAP ─────────────────────────────────────
-step 6 "Setting up 2G Swap..."
+step 6 "Setting up Swap..."
 if swapon --show | grep -q "/swapfile"; then
     warn "Swapfile already exists, skipping"
     echo ""
