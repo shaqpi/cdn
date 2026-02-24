@@ -13,7 +13,6 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
 BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
 WHITE='\033[1;37m'
 BOLD='\033[1m'
 DIM='\033[2m'
@@ -26,85 +25,81 @@ RESET='\033[0m'
 clear
 
 # ── Banner ─────────────────────────────────────────
-echo -e "${BG_CYAN}${WHITE}${BOLD}"
-echo "  ╔══════════════════════════════════════════════╗"
-echo "  ║        SSH Root Login Configurator           ║"
-echo "  ╚══════════════════════════════════════════════╝"
-echo -e "${RESET}"
-echo -e "  ${DIM}${CYAN}Starting configuration at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
+echo ""
+echo -e "${BG_CYAN}${WHITE}${BOLD}  ╔════════════════════════════════════════════╗  ${RESET}"
+echo -e "${BG_CYAN}${WHITE}${BOLD}  ║       SSH Root Login Configurator          ║  ${RESET}"
+echo -e "${BG_CYAN}${WHITE}${BOLD}  ╚════════════════════════════════════════════╝  ${RESET}"
+echo ""
+echo -e "  ${DIM}${CYAN}▸ Started at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
 
-# ── Step function ──────────────────────────────────
+# ── Helpers ────────────────────────────────────────
 step() {
-    echo -e "${BG_BLUE}${WHITE}${BOLD}  STEP $1/3  ${RESET}${BOLD}${CYAN} $2${RESET}"
-    echo -e "  ${DIM}${BLUE}────────────────────────────────────────────────${RESET}"
+    echo -e "${BG_BLUE}${WHITE}${BOLD}  STEP $1/3  ${RESET}  ${BOLD}${CYAN}$2${RESET}"
+    echo -e "  ${DIM}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 }
 
 ok() {
-    echo -e "  ${BG_GREEN}${WHITE}${BOLD}  ✓ DONE  ${RESET}${GREEN}${BOLD} $1${RESET}"
     echo ""
-    sleep 0.5
+    echo -e "  ${BG_GREEN}${WHITE}${BOLD}  ✓  ${RESET}  ${GREEN}${BOLD}$1${RESET}"
+    echo ""
+    sleep 0.3
 }
 
 info() {
-    echo -e "  ${CYAN}  →${RESET} $1"
-}
-
-warn() {
-    echo -e "  ${YELLOW}${BOLD}  ⚠${RESET}${YELLOW}  $1${RESET}"
+    echo -e "  ${CYAN}  ›  ${RESET}$1"
 }
 
 err() {
-    echo -e "  ${BG_RED}${WHITE}${BOLD}  ✗ ERROR  ${RESET}${RED}${BOLD} $1${RESET}"
+    echo -e "  ${BG_RED}${WHITE}${BOLD}  ✗  ${RESET}  ${RED}${BOLD}$1${RESET}"
+    echo ""
 }
 
-# ── STEP 1: Enable PermitRootLogin ────────────────
-step 1 "Enabling PermitRootLogin in sshd_config..."
+# ══ STEP 1 ════════════════════════════════════════
+step 1 "Enabling PermitRootLogin"
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
-
-info "${DIM}Target file: ${WHITE}$SSHD_CONFIG${RESET}"
+info "File    : ${WHITE}${BOLD}$SSHD_CONFIG${RESET}"
 
 if grep -q "^PermitRootLogin" "$SSHD_CONFIG"; then
-    info "Found existing ${YELLOW}PermitRootLogin${RESET} entry — ${CYAN}overwriting...${RESET}"
+    info "Status  : ${YELLOW}Existing entry found${RESET} — overwriting"
     sed -i 's/^PermitRootLogin.*/PermitRootLogin yes/' "$SSHD_CONFIG"
 elif grep -q "^#PermitRootLogin" "$SSHD_CONFIG"; then
-    info "Found ${YELLOW}commented${RESET} entry — ${CYAN}uncommenting and setting...${RESET}"
+    info "Status  : ${YELLOW}Commented entry found${RESET} — uncommenting"
     sed -i 's/^#PermitRootLogin.*/PermitRootLogin yes/' "$SSHD_CONFIG"
 else
-    info "${YELLOW}No existing entry found${RESET} — ${CYAN}appending to config...${RESET}"
+    info "Status  : ${YELLOW}No entry found${RESET} — appending"
     echo "PermitRootLogin yes" >> "$SSHD_CONFIG"
 fi
 
-ok "PermitRootLogin set to ${BOLD}yes${RESET}${GREEN}"
+ok "PermitRootLogin set to yes"
 
-# ── STEP 2: Restart SSH ───────────────────────────
-step 2 "Restarting SSH service..."
+# ══ STEP 2 ════════════════════════════════════════
+step 2 "Restarting SSH service"
 
-info "${CYAN}Sending restart signal to ${WHITE}sshd${CYAN}...${RESET}"
+info "Sending restart signal to ${WHITE}${BOLD}sshd${RESET}"
 systemctl restart ssh
-info "${GREEN}Service is ${BOLD}active${RESET}${GREEN} and running${RESET}"
+info "Service : ${GREEN}${BOLD}active & running${RESET}"
 
 ok "SSH service restarted successfully"
 
-# ── STEP 3: Set Root Password ─────────────────────
-step 3 "Setting new root password..."
+# ══ STEP 3 ════════════════════════════════════════
+step 3 "Set root password"
 
 echo ""
-echo -e "  ${BG_BLUE}${WHITE}${BOLD}                                                ${RESET}"
-echo -e "  ${BG_BLUE}${WHITE}${BOLD}   Enter a new password for the root account    ${RESET}"
-echo -e "  ${BG_BLUE}${WHITE}${BOLD}                                                ${RESET}"
-echo -e "  ${YELLOW}  ⚠  Password will be visible as you type        ${RESET}"
+echo -e "  ${BG_BLUE}${WHITE}${BOLD}  ┌──────────────────────────────────────────┐  ${RESET}"
+echo -e "  ${BG_BLUE}${WHITE}${BOLD}  │    Enter a new password for root          │  ${RESET}"
+echo -e "  ${BG_BLUE}${WHITE}${BOLD}  └──────────────────────────────────────────┘  ${RESET}"
+echo -e "  ${YELLOW}  ⚠  Password will be visible as you type${RESET}"
 echo ""
 
 while true; do
-    echo -ne "  ${BOLD}${CYAN}New Password${RESET}${BOLD} : ${WHITE}"
+    echo -ne "  ${BOLD}${CYAN}New Password  :  ${WHITE}"
     read PASSWORD < /dev/tty
     echo -ne "${RESET}"
-    echo ""
     if [ -z "$PASSWORD" ]; then
-        err "Password cannot be empty. Please try again."
         echo ""
+        err "Password cannot be empty. Please try again."
     else
         break
     fi
@@ -114,20 +109,26 @@ echo "root:$PASSWORD" | chpasswd
 
 ok "Root password updated successfully"
 
-# ── DONE ──────────────────────────────────────────
-echo ""
-echo -e "${BG_GREEN}${WHITE}${BOLD}"
-echo "  ╔══════════════════════════════════════════════╗"
-echo "  ║                    All Done!                 ║"
-echo "  ╚══════════════════════════════════════════════╝"
-echo -e "${RESET}"
+# ── Detect Public IP ───────────────────────────────
+PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
+            wget -qO- --timeout=5 https://api.ipify.org 2>/dev/null || \
+            echo "<your-server-ip>")
 
-echo -e "  ${CYAN}${BOLD}Summary:${RESET}"
-echo -e "  ${GREEN}  ✓${RESET}  SSH Root Login  : ${GREEN}${BOLD}Enabled${RESET}"
-echo -e "  ${GREEN}  ✓${RESET}  Root Password   : ${GREEN}${BOLD}Updated${RESET}"
-echo -e "  ${GREEN}  ✓${RESET}  SSH Service     : ${GREEN}${BOLD}Restarted${RESET}"
+# ══ DONE ══════════════════════════════════════════
 echo ""
-echo -e "  ${BOLD}${WHITE}You can now login as root via SSH${RESET}"
+echo -e "${BG_GREEN}${WHITE}${BOLD}  ╔════════════════════════════════════════════╗  ${RESET}"
+echo -e "${BG_GREEN}${WHITE}${BOLD}  ║                  All Done!                 ║  ${RESET}"
+echo -e "${BG_GREEN}${WHITE}${BOLD}  ╚════════════════════════════════════════════╝  ${RESET}"
 echo ""
-echo -e "  ${DIM}Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
+echo -e "  ${BOLD}${CYAN}Summary${RESET}"
+echo -e "  ${DIM}${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
+echo -e "  ${GREEN}  ✓  ${RESET}SSH Root Login   :  ${GREEN}${BOLD}Enabled${RESET}"
+echo -e "  ${GREEN}  ✓  ${RESET}Root Password    :  ${GREEN}${BOLD}Updated${RESET}"
+echo -e "  ${GREEN}  ✓  ${RESET}SSH Service      :  ${GREEN}${BOLD}Restarted${RESET}"
+echo -e "  ${GREEN}  ✓  ${RESET}Public IP        :  ${WHITE}${BOLD}${PUBLIC_IP}${RESET}"
+echo ""
+echo -e "  ${BOLD}${WHITE}Connect via SSH:${RESET}"
+echo -e "  ${BG_BLUE}${WHITE}${BOLD}  ssh root@${PUBLIC_IP}  ${RESET}"
+echo ""
+echo -e "  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
