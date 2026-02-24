@@ -13,8 +13,7 @@ clear
 
 echo -e "${CYAN}${BOLD}"
 echo "  ╔══════════════════════════════════════════════╗"
-echo "  ║        Fastfetch + Fish Shell Installer      ║"
-echo "  ║           Multi-Distro Compatible            ║"
+echo "  ║              Fastfetch Installer             ║"
 echo "  ╚══════════════════════════════════════════════╝"
 echo -e "${RESET}"
 
