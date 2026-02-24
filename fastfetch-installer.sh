@@ -6,38 +6,84 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 CYAN='\033[0;36m'
+WHITE='\033[1;37m'
 BOLD='\033[1m'
+DIM='\033[2m'
+BG_BLUE='\033[44m'
+BG_GREEN='\033[42m'
+BG_RED='\033[41m'
+BG_YELLOW='\033[43m'
+BG_CYAN='\033[46m'
 RESET='\033[0m'
 
 clear
 
-echo -e "${CYAN}${BOLD}"
-echo "  ╔══════════════════════════════════════════════╗"
-echo "  ║               Fastfetch Installer            ║"
-echo "  ╚══════════════════════════════════════════════╝"
-echo -e "${RESET}"
+M="    "
+BW=46
+
+TOP="${M}╔$(printf '═%.0s' $(seq 1 $BW))╗"
+BOT="${M}╚$(printf '═%.0s' $(seq 1 $BW))╝"
+SEP="${M}╠$(printf '═%.0s' $(seq 1 $BW))╣"
+DIV="${M}$(printf '─%.0s' $(seq 1 $(( BW + 2 ))))"
+
+mid() {
+    local color="$1"
+    local text="$2"
+    local tlen=${#text}
+    local pad=$(( BW - tlen - 1 ))
+    printf "${M}║ ${color}${BOLD}%s${RESET}%${pad}s║\n" "$text" ""
+}
+
+midsep() {
+    local color="$1"
+    local text="$2"
+    local tlen=${#text}
+    local pad=$(( BW - tlen - 1 ))
+    printf "${M}║ ${color}%-*s${RESET}║\n" "$BW" " $text"
+}
 
 step() {
-    echo -e "${CYAN}${BOLD}  [$1/$TOTAL]${RESET} $2"
+    echo ""
+    echo -e "${M}${BG_BLUE}${WHITE}${BOLD} STEP $1/$TOTAL   $2 ${RESET}"
+    echo -e "${DIM}${CYAN}${DIV}${RESET}"
 }
 
 ok() {
-    echo -e "         ${GREEN}✓${RESET} $1"
+    echo -e "${M}${BG_GREEN}${WHITE}${BOLD} ✓  $1 ${RESET}"
     echo ""
+    sleep 0.3
 }
 
 warn() {
-    echo -e "         ${YELLOW}!${RESET} $1"
+    echo -e "${M}${BG_YELLOW}${WHITE}${BOLD} !  ${RESET} ${YELLOW}$1${RESET}"
 }
 
 fail() {
-    echo -e "         ${RED}✗${RESET} $1"
+    echo -e "${M}${BG_RED}${WHITE}${BOLD} ✗  $1 ${RESET}"
+    echo ""
     exit 1
+}
+
+info() {
+    printf "${M}  ${CYAN}›${RESET}  ${BOLD}%-14s${RESET}  %b\n" "$1" "$2"
+}
+
+log() {
+    echo -e "${M}  ${DIM}${CYAN}  $1${RESET}"
 }
 
 TOTAL=7
 
-# ── DETECT OS ────────────────────────────────────────
+# ── Banner ─────────────────────────────────────────
+echo ""
+echo -e "${CYAN}${BOLD}${TOP}${RESET}"
+mid "${CYAN}" "          Fastfetch Installer"
+echo -e "${CYAN}${BOLD}${BOT}${RESET}"
+echo ""
+echo -e "${M}  ${DIM}${CYAN}▸ Started at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
+echo ""
+
+# ── DETECT OS ──────────────────────────────────────
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS_ID="${ID,,}"
@@ -47,11 +93,11 @@ else
     fail "Cannot detect OS. /etc/os-release not found."
 fi
 
-echo -e "  ${BOLD}Detected OS :${RESET} $OS_NAME"
-echo -e "  ${BOLD}Distro ID   :${RESET} $OS_ID"
+info "Detected OS" "${WHITE}${BOLD}$OS_NAME${RESET}"
+info "Distro ID"   "${WHITE}${BOLD}$OS_ID${RESET}"
 echo ""
 
-# ── INSTALL FASTFETCH FROM GITHUB DIRECT URL ─────────
+# ── INSTALL FASTFETCH FROM GITHUB ──────────────────
 install_fastfetch_deb_latest() {
     local ARCH
     ARCH=$(dpkg --print-architecture)
@@ -66,7 +112,6 @@ install_fastfetch_deb_latest() {
 
     warn "Fetching latest fastfetch version tag..."
 
-    # Ambil versi terbaru via redirect (tidak perlu parse JSON)
     local LATEST_VERSION
     LATEST_VERSION=$(curl -fsSL -o /dev/null -w "%{url_effective}" \
         https://github.com/fastfetch-cli/fastfetch/releases/latest \
@@ -78,58 +123,60 @@ install_fastfetch_deb_latest() {
 
     local DEB_URL="https://github.com/fastfetch-cli/fastfetch/releases/download/${LATEST_VERSION}/fastfetch-linux-${GH_ARCH}.deb"
 
-    warn "Version  : $LATEST_VERSION"
-    warn "Arch     : $GH_ARCH"
-    warn "URL      : $DEB_URL"
+    info "Version"  "${WHITE}${BOLD}$LATEST_VERSION${RESET}"
+    info "Arch"     "${WHITE}${BOLD}$GH_ARCH${RESET}"
 
-    # Cek URL valid dulu
     local HTTP_CODE
     HTTP_CODE=$(curl -fsSL -o /dev/null -w "%{http_code}" "$DEB_URL")
     if [ "$HTTP_CODE" != "200" ]; then
-        fail "Download URL returned HTTP $HTTP_CODE. URL: $DEB_URL"
+        fail "Download URL returned HTTP $HTTP_CODE."
     fi
 
     local TMP_DEB
     TMP_DEB=$(mktemp /tmp/fastfetch_XXXXXX.deb)
+    log "Downloading package..."
     curl -fsSL "$DEB_URL" -o "$TMP_DEB"
-    dpkg -i "$TMP_DEB" || apt-get install -f -y -q
+    log "Installing package..."
+    dpkg -i "$TMP_DEB" 2>&1 | while IFS= read -r line; do log "$line"; done || apt-get install -f -y -q 2>&1 | while IFS= read -r line; do log "$line"; done
     rm -f "$TMP_DEB"
 }
 
-# ── STEP 1: INSTALL FASTFETCH ────────────────────────
-step 1 "Installing Fastfetch..."
+# ══ STEP 1 ════════════════════════════════════════
+step 1 "Installing Fastfetch"
 
 case "$OS_ID" in
     ubuntu | linuxmint | pop)
-        apt-get update -qq
-        apt-get install -y -q software-properties-common curl
+        log "Updating package lists..."
+        apt-get update -qq 2>&1 | while IFS= read -r line; do log "$line"; done
+        apt-get install -y -q software-properties-common curl 2>&1 | while IFS= read -r line; do log "$line"; done
+        log "Adding PPA..."
         add-apt-repository ppa:zhangsongcui3371/fastfetch -y -q 2>/dev/null
-        apt-get update -qq
-        apt-get install -y -q fastfetch
+        apt-get update -qq 2>&1 | while IFS= read -r line; do log "$line"; done
+        apt-get install -y -q fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     debian)
         apt-get install -y -q curl 2>/dev/null || true
         install_fastfetch_deb_latest
         ;;
     fedora)
-        dnf install -y -q fastfetch
+        dnf install -y -q fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     rhel | centos | almalinux | rocky)
         dnf install -y -q epel-release 2>/dev/null || true
-        dnf install -y -q fastfetch 2>/dev/null || {
+        dnf install -y -q fastfetch 2>/dev/null | while IFS= read -r line; do log "$line"; done || {
             warn "fastfetch not in repo, installing from GitHub..."
             install_fastfetch_deb_latest
         }
         ;;
     arch | manjaro | endeavouros)
-        pacman -Sy --noconfirm fastfetch
+        pacman -Sy --noconfirm fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     alpine)
-        apk update -q
-        apk add -q fastfetch
+        apk update -q 2>&1 | while IFS= read -r line; do log "$line"; done
+        apk add -q fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     opensuse* | suse)
-        zypper install -y fastfetch
+        zypper install -y fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     *)
         if echo "$OS_ID_LIKE" | grep -q "debian\|ubuntu"; then
@@ -137,9 +184,9 @@ case "$OS_ID" in
             apt-get install -y -q curl 2>/dev/null || true
             install_fastfetch_deb_latest
         elif echo "$OS_ID_LIKE" | grep -q "rhel\|fedora"; then
-            dnf install -y -q fastfetch
+            dnf install -y -q fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done
         elif command -v pacman &>/dev/null; then
-            pacman -Sy --noconfirm fastfetch
+            pacman -Sy --noconfirm fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done
         else
             fail "Unsupported distro: $OS_ID. Please install fastfetch manually."
         fi
@@ -148,32 +195,32 @@ esac
 
 ok "Fastfetch installed ($(fastfetch --version 2>/dev/null | head -1))"
 
-# ── STEP 2: INSTALL FISH ─────────────────────────────
-step 2 "Installing Fish shell..."
+# ══ STEP 2 ════════════════════════════════════════
+step 2 "Installing Fish shell"
 
 case "$OS_ID" in
     ubuntu | debian | linuxmint | pop)
-        apt-get install -y -q fish
+        apt-get install -y -q fish 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     fedora | rhel | centos | almalinux | rocky)
-        dnf install -y -q fish
+        dnf install -y -q fish 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     arch | manjaro | endeavouros)
-        pacman -Sy --noconfirm fish
+        pacman -Sy --noconfirm fish 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     alpine)
-        apk add -q fish
+        apk add -q fish 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     opensuse* | suse)
-        zypper install -y fish
+        zypper install -y fish 2>&1 | while IFS= read -r line; do log "$line"; done
         ;;
     *)
         if echo "$OS_ID_LIKE" | grep -q "debian\|ubuntu"; then
-            apt-get install -y -q fish
+            apt-get install -y -q fish 2>&1 | while IFS= read -r line; do log "$line"; done
         elif echo "$OS_ID_LIKE" | grep -q "rhel\|fedora"; then
-            dnf install -y -q fish
+            dnf install -y -q fish 2>&1 | while IFS= read -r line; do log "$line"; done
         elif command -v pacman &>/dev/null; then
-            pacman -Sy --noconfirm fish
+            pacman -Sy --noconfirm fish 2>&1 | while IFS= read -r line; do log "$line"; done
         else
             warn "Could not install fish automatically. Please install it manually."
         fi
@@ -182,8 +229,8 @@ esac
 
 ok "Fish shell installed"
 
-# ── STEP 3: CONFIGURE FISH ───────────────────────────
-step 3 "Configuring Fish shell..."
+# ══ STEP 3 ════════════════════════════════════════
+step 3 "Configuring Fish shell"
 
 fish -c "set -U fish_greeting ''" 2>/dev/null || true
 
@@ -197,10 +244,15 @@ if ! grep -q "exec fish" ~/.bashrc 2>/dev/null; then
     echo "exec fish" >> ~/.bashrc
 fi
 
-ok "Fish configured — greeting disabled, fastfetch on startup"
+info "Greeting"  "${GREEN}disabled${RESET}"
+info "Startup"   "${GREEN}fastfetch on login${RESET}"
+info "Shell"     "${GREEN}auto-switch via .bashrc${RESET}"
 
-# ── STEP 4: ASCII + CONFIG ───────────────────────────
-step 4 "Writing Fastfetch ASCII art and config..."
+ok "Fish configured"
+
+# ══ STEP 4 ════════════════════════════════════════
+step 4 "Writing Fastfetch ASCII art and config"
+
 mkdir -p /root/.config/fastfetch
 
 cat > /root/.config/fastfetch/ascii.txt << 'ASCIIEOF'
@@ -373,48 +425,71 @@ with open("/root/.config/fastfetch/config.jsonc", "w", encoding="utf-8") as f:
     f.write(config)
 PYEOF
 
-ok "ASCII art and config written"
+info "ASCII art"  "${GREEN}written${RESET}"
+info "Config"     "${GREEN}written${RESET}"
 
-# ── STEP 5: DISABLE MOTD ─────────────────────────────
-step 5 "Disabling default MOTD..."
+ok "Fastfetch ASCII art and config written"
+
+# ══ STEP 5 ════════════════════════════════════════
+step 5 "Disabling default MOTD"
+
 touch ~/.hushlogin
 chmod -x /etc/update-motd.d/* 2>/dev/null || true
+
+info "hushlogin"  "${GREEN}created${RESET}"
+info "MOTD"       "${GREEN}disabled${RESET}"
+
 ok "MOTD disabled"
 
-# ── STEP 6: SWAP ─────────────────────────────────────
-step 6 "Setting up Swap..."
+# ══ STEP 6 ════════════════════════════════════════
+step 6 "Setting up Swap"
+
 if swapon --show | grep -q "/swapfile"; then
     warn "Swapfile already exists, skipping"
     echo ""
 else
-    fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=4096 status=none
+    log "Allocating 2G swapfile..."
+    fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048 status=none
     chmod 600 /swapfile
+    log "Formatting swap..."
     mkswap /swapfile -q
     swapon /swapfile
     grep -q "/swapfile" /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
     grep -q "vm.swappiness" /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
     sysctl -p -q
-    ok "Swap created (2G, swappiness=10)"
+
+    info "Size"       "${WHITE}${BOLD}2G${RESET}"
+    info "Swappiness" "${WHITE}${BOLD}10${RESET}"
+    info "fstab"      "${GREEN}updated${RESET}"
+
+    ok "Swap created"
 fi
 
-# ── STEP 7: SUMMARY ──────────────────────────────────
-step 7 "Verifying installation..."
+# ══ STEP 7 ════════════════════════════════════════
+step 7 "Verifying installation"
 
 FF_VER=$(fastfetch --version 2>/dev/null | head -1 || echo "unknown")
 FISH_VER=$(fish --version 2>/dev/null || echo "unknown")
 SWAP_SIZE=$(swapon --show --noheadings 2>/dev/null | awk '{print $3}' | head -1 || echo "none")
 
+info "Fastfetch"  "${GREEN}${BOLD}$FF_VER${RESET}"
+info "Fish"       "${GREEN}${BOLD}$FISH_VER${RESET}"
+info "Swap"       "${GREEN}${BOLD}$SWAP_SIZE${RESET}"
+
 ok "Verification complete"
 
-echo -e "${CYAN}${BOLD}"
-echo "  ╔══════════════════════════════════════════════╗"
-echo "  ║               All Done!                      ║"
-echo "  ╠══════════════════════════════════════════════╣"
-printf "  ║  %-20s : %-23s║\n" "OS" "$OS_NAME"
-printf "  ║  %-20s : %-23s║\n" "Fastfetch" "$FF_VER"
-printf "  ║  %-20s : %-23s║\n" "Fish" "$FISH_VER"
-printf "  ║  %-20s : %-23s║\n" "Swap" "$SWAP_SIZE"
-echo "  ╠══════════════════════════════════════════════╣"
-echo "  ║  Run: exec fish                              ║"
-echo "  ╚══════════════════════════════════════════════╝"
-echo -e "${RESET}"
+# ══ DONE ══════════════════════════════════════════
+echo ""
+echo -e "${GREEN}${BOLD}${TOP}${RESET}"
+mid "${GREEN}" "             All Done!"
+echo -e "${GREEN}${BOLD}${SEP}${RESET}"
+printf "${M}║  ${CYAN}${BOLD}%-14s${RESET}  :  ${WHITE}${BOLD}%-$((BW - 22))s${RESET}║\n" "OS"        "$OS_NAME"
+printf "${M}║  ${CYAN}${BOLD}%-14s${RESET}  :  ${WHITE}${BOLD}%-$((BW - 22))s${RESET}║\n" "Fastfetch" "$FF_VER"
+printf "${M}║  ${CYAN}${BOLD}%-14s${RESET}  :  ${WHITE}${BOLD}%-$((BW - 22))s${RESET}║\n" "Fish"      "$FISH_VER"
+printf "${M}║  ${CYAN}${BOLD}%-14s${RESET}  :  ${WHITE}${BOLD}%-$((BW - 22))s${RESET}║\n" "Swap"      "$SWAP_SIZE"
+echo -e "${GREEN}${BOLD}${SEP}${RESET}"
+mid "${YELLOW}" "  Run: exec fish"
+echo -e "${GREEN}${BOLD}${BOT}${RESET}"
+echo ""
+echo -e "${M}  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
+echo ""
