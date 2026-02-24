@@ -99,7 +99,7 @@ echo ""
 
 while true; do
     echo -ne "  ${BOLD}${CYAN}New Password${RESET}${BOLD} : ${WHITE}"
-    read PASSWORD
+    read PASSWORD < /dev/tty
     echo -ne "${RESET}"
     echo ""
     if [ -z "$PASSWORD" ]; then
