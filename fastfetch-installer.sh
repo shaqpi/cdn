@@ -151,11 +151,12 @@ case "$OS_ID" in
         apt-get install -y -q software-properties-common curl 2>&1 | while IFS= read -r line; do log "$line"; done
         log "Adding PPA..."
         add-apt-repository ppa:zhangsongcui3371/fastfetch -y -q 2>/dev/null || true
-        apt-get update -qq 2>&1 | while IFS= read -r line; do log "$line"; done || true
-        apt-get install -y -q fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done || {
+        apt-get update -qq 2>&1 | while IFS= read -r line; do log "$line"; done
+        apt-get install -y -q fastfetch 2>&1 | while IFS= read -r line; do log "$line"; done
+        if ! command -v fastfetch &>/dev/null; then
             warn "PPA install failed, falling back to GitHub release..."
             install_fastfetch_deb_latest
-        }
+        fi
         ;;
     debian)
         apt-get install -y -q curl 2>/dev/null || true
@@ -496,4 +497,3 @@ echo -e "${GREEN}${BOLD}${BOT}${RESET}"
 echo ""
 echo -e "${M}  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
-# update
