@@ -13,7 +13,7 @@ clear
 
 echo -e "${CYAN}${BOLD}"
 echo "  ╔══════════════════════════════════════════════╗"
-echo "  ║              Fastfetch Installer             ║"
+echo "  ║               Fastfetch Installer            ║"
 echo "  ╚══════════════════════════════════════════════╝"
 echo -e "${RESET}"
 
@@ -56,33 +56,46 @@ echo -e "  ${BOLD}Detected OS :${RESET} $OS_NAME"
 echo -e "  ${BOLD}Distro ID   :${RESET} $OS_ID"
 echo ""
 
-# ── STEP 1: INSTALL FASTFETCH ────────────────────────
-TOTAL=7
-step 1 "Installing Fastfetch..."
-
+# ── INSTALL FASTFETCH FROM GITHUB ────────────────────
 install_fastfetch_deb_latest() {
     local ARCH
     ARCH=$(dpkg --print-architecture)
+
+    # Map dpkg arch ke nama file fastfetch GitHub release
+    case "$ARCH" in
+        amd64)   GH_ARCH="amd64" ;;
+        arm64)   GH_ARCH="aarch64" ;;
+        armhf)   GH_ARCH="armv7" ;;
+        i386)    GH_ARCH="i386" ;;
+        *)       GH_ARCH="$ARCH" ;;
+    esac
+
+    warn "Fetching latest fastfetch release for linux-${GH_ARCH}..."
+
     local DEB_URL
     DEB_URL=$(curl -fsSL https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
         | grep "browser_download_url" \
-        | grep "linux_${ARCH}.deb" \
+        | grep "linux-${GH_ARCH}\.deb" \
         | head -1 \
         | cut -d '"' -f 4)
 
     if [ -z "$DEB_URL" ]; then
-        fail "Could not find fastfetch .deb for arch: $ARCH"
+        fail "Could not find fastfetch .deb for arch: ${GH_ARCH}. Check: https://github.com/fastfetch-cli/fastfetch/releases"
     fi
 
+    warn "Downloading: $DEB_URL"
     local TMP_DEB
     TMP_DEB=$(mktemp /tmp/fastfetch_XXXXXX.deb)
     curl -fsSL "$DEB_URL" -o "$TMP_DEB"
-    dpkg -i "$TMP_DEB" 2>/dev/null || apt-get install -f -y -q
+    dpkg -i "$TMP_DEB" || apt-get install -f -y -q
     rm -f "$TMP_DEB"
 }
 
+# ── STEP 1: INSTALL FASTFETCH ────────────────────────
+step 1 "Installing Fastfetch..."
+
 case "$OS_ID" in
-    ubuntu)
+    ubuntu | linuxmint | pop)
         apt-get update -qq
         apt-get install -y -q software-properties-common curl
         add-apt-repository ppa:zhangsongcui3371/fastfetch -y -q 2>/dev/null
@@ -94,13 +107,6 @@ case "$OS_ID" in
         apt-get install -y -q curl
         install_fastfetch_deb_latest
         ;;
-    linuxmint | pop)
-        apt-get update -qq
-        apt-get install -y -q software-properties-common curl
-        add-apt-repository ppa:zhangsongcui3371/fastfetch -y -q 2>/dev/null
-        apt-get update -qq
-        apt-get install -y -q fastfetch
-        ;;
     fedora)
         dnf install -y -q fastfetch
         ;;
@@ -108,12 +114,10 @@ case "$OS_ID" in
         dnf install -y -q epel-release 2>/dev/null || true
         dnf install -y -q fastfetch 2>/dev/null || {
             warn "fastfetch not in repo, installing from GitHub..."
-            local ARCH
             ARCH=$(uname -m)
-            local RPM_URL
             RPM_URL=$(curl -fsSL https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
                 | grep "browser_download_url" \
-                | grep "linux_${ARCH}.rpm" \
+                | grep "linux-${ARCH}\.rpm" \
                 | head -1 \
                 | cut -d '"' -f 4)
             dnf install -y "$RPM_URL"
@@ -383,7 +387,7 @@ chmod -x /etc/update-motd.d/* 2>/dev/null || true
 ok "MOTD disabled"
 
 # ── STEP 6: SWAP ─────────────────────────────────────
-step 6 "Setting up Swap..."
+step 6 "Setting up 2G Swap..."
 if swapon --show | grep -q "/swapfile"; then
     warn "Swapfile already exists, skipping"
     echo ""
