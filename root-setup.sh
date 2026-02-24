@@ -2,7 +2,6 @@
 
 set -e
 
-# ── COLORS ───────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -13,13 +12,23 @@ RESET='\033[0m'
 clear
 
 echo -e "${CYAN}${BOLD}"
-echo "  ╔════════════════════════════════════════╗"
-echo "  ║       SSH Root Login Configurator      ║"
-echo "  ╚════════════════════════════════════════╝"
+echo "  ╔══════════════════════════════════════════════╗"
+echo "  ║        SSH Root Login Configurator           ║"
+echo "  ║              Ubuntu 24.04                    ║"
+echo "  ╚══════════════════════════════════════════════╝"
 echo -e "${RESET}"
 
+step() {
+    echo -e "${CYAN}${BOLD}  [$1/3]${RESET} $2"
+}
+
+ok() {
+    echo -e "         ${GREEN}✓${RESET} $1"
+    echo ""
+}
+
 # ── STEP 1: Enable PermitRootLogin ───────────────────
-echo -e "${BOLD}[1/3]${RESET} Configuring SSH PermitRootLogin..."
+step 1 "Enabling PermitRootLogin in sshd_config..."
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
 
@@ -31,41 +40,46 @@ else
     echo "PermitRootLogin yes" >> "$SSHD_CONFIG"
 fi
 
-echo -e "    ${GREEN}✓${RESET} PermitRootLogin set to ${GREEN}yes${RESET}"
+ok "PermitRootLogin set to yes"
 
 # ── STEP 2: Restart SSH ──────────────────────────────
-echo -e "${BOLD}[2/3]${RESET} Restarting SSH service..."
+step 2 "Restarting SSH service..."
 systemctl restart ssh
-echo -e "    ${GREEN}✓${RESET} SSH service restarted"
+ok "SSH service restarted successfully"
 
 # ── STEP 3: Set Root Password ────────────────────────
-echo ""
-echo -e "${BOLD}[3/3]${RESET} Set Root Password"
-echo -e "${CYAN}  ┌─────────────────────────────────────────┐${RESET}"
-echo -e "${CYAN}  │${RESET}  Masukkan password baru untuk root      ${CYAN}│${RESET}"
-echo -e "${CYAN}  └─────────────────────────────────────────┘${RESET}"
-echo ""
-echo -ne "  ${BOLD}Password${RESET}  : "
+step 3 "Set new root password"
 
-# Baca password sekali, tampil (tanpa -s)
-read PASSWORD
+echo -e "  ${CYAN}┌──────────────────────────────────────────────┐${RESET}"
+echo -e "  ${CYAN}│${RESET}  Enter a new password for the root account   ${CYAN}│${RESET}"
+echo -e "  ${CYAN}│${RESET}  ${YELLOW}Note:${RESET} Password will be visible as you type   ${CYAN}│${RESET}"
+echo -e "  ${CYAN}└──────────────────────────────────────────────┘${RESET}"
 echo ""
 
-if [ -z "$PASSWORD" ]; then
-    echo -e "  ${RED}✗ Password tidak boleh kosong!${RESET}"
-    exit 1
-fi
+while true; do
+    echo -ne "  ${BOLD}New Password${RESET}  : "
+    read PASSWORD
+    echo ""
 
-# Set password
+    if [ -z "$PASSWORD" ]; then
+        echo -e "  ${RED}✗ Password cannot be empty. Please try again.${RESET}"
+        echo ""
+    else
+        break
+    fi
+done
+
 echo "root:$PASSWORD" | chpasswd
+ok "Root password updated successfully"
 
-echo -e "  ${GREEN}✓${RESET} Password root berhasil diubah"
-echo ""
+# ── DONE ─────────────────────────────────────────────
 echo -e "${CYAN}${BOLD}"
-echo "  ╔════════════════════════════════════════╗"
-echo "  ║              Selesai!                  ║"
-echo "  ║                                        ║"
-echo "  ║  SSH Root Login  : enabled             ║"
-echo "  ║  Password Root   : updated             ║"
-echo "  ╚════════════════════════════════════════╝"
+echo "  ╔══════════════════════════════════════════════╗"
+echo "  ║               All Done!                      ║"
+echo "  ║                                              ║"
+echo "  ║  SSH Root Login  : enabled                   ║"
+echo "  ║  Root Password   : updated                   ║"
+echo "  ║                                              ║"
+echo "  ║  You can now login as root via SSH.          ║"
+echo "  ╚══════════════════════════════════════════════╝"
 echo -e "${RESET}"
