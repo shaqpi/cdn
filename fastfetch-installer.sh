@@ -2,38 +2,70 @@
 
 set -e
 
-echo "================================================"
-echo "  Install Fastfetch + Fish + Config + Swap"
-echo "  Ubuntu 24.04"
-echo "================================================"
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+RESET='\033[0m'
 
-# ── INSTALL FASTFETCH ────────────────────────────────
-echo ""
-echo "[1/5] Installing Fastfetch..."
-add-apt-repository ppa:zhangsongcui3371/fastfetch -y
-apt update
-apt install -y fastfetch
+clear
 
-# ── INSTALL FISH ─────────────────────────────────────
-echo ""
-echo "[2/5] Installing Fish shell..."
-apt install -y fish
+echo -e "${CYAN}${BOLD}"
+echo "  ╔══════════════════════════════════════════════╗"
+echo "  ║        Fastfetch + Fish Shell Installer      ║"
+echo "  ║              Ubuntu 24.04 / root             ║"
+echo "  ╚══════════════════════════════════════════════╝"
+echo -e "${RESET}"
 
-# Matikan welcome message fish
-fish -c "set -U fish_greeting ''"
+step() {
+    echo -e "${CYAN}${BOLD}  [$1/$TOTAL]${RESET} $2"
+}
 
-# Config fish: fastfetch on start
+ok() {
+    echo -e "         ${GREEN}✓${RESET} $1"
+    echo ""
+}
+
+fail() {
+    echo -e "         ${RED}✗${RESET} $1"
+    exit 1
+}
+
+TOTAL=7
+
+# ── STEP 1: APT UPDATE ───────────────────────────────
+step 1 "Updating package list..."
+apt update -qq && ok "Package list updated"
+
+# ── STEP 2: INSTALL FASTFETCH ────────────────────────
+step 2 "Adding Fastfetch PPA and installing..."
+add-apt-repository ppa:zhangsongcui3371/fastfetch -y -q 2>/dev/null
+apt update -qq
+apt install -y -q fastfetch && ok "Fastfetch installed"
+
+# ── STEP 3: INSTALL FISH ─────────────────────────────
+step 3 "Installing Fish shell..."
+apt install -y -q fish && ok "Fish shell installed"
+
+# ── STEP 4: CONFIGURE FISH ───────────────────────────
+step 4 "Configuring Fish shell..."
+fish -c "set -U fish_greeting ''" 2>/dev/null || true
 mkdir -p /root/.config/fish
 cat > /root/.config/fish/config.fish << 'FISHEOF'
 fastfetch
 FISHEOF
 
-# ── CONFIG FASTFETCH ─────────────────────────────────
-echo ""
-echo "[3/5] Writing Fastfetch config..."
+if ! grep -q "exec fish" ~/.bashrc; then
+    echo "" >> ~/.bashrc
+    echo "exec fish" >> ~/.bashrc
+fi
+ok "Fish configured — greeting disabled, fastfetch on startup"
+
+# ── STEP 5: WRITE ASCII + CONFIG ─────────────────────
+step 5 "Writing Fastfetch ASCII art and config..."
 mkdir -p /root/.config/fastfetch
 
-# ASCII ART
 cat > /root/.config/fastfetch/ascii.txt << 'ASCIIEOF'
 $1
 $1   ⣇⣿⠘⣿⣿⣿⡿⡿⣟⣟⢟⢟⢝⠵⡝⣿⡿⢂⣼⣿⣷⣌⠩⡫⡻⣝⠹⢿⣿⣷ 
@@ -53,7 +85,6 @@ $8   ⡝⡵⡕⡀⠑⠳⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⢉⡠
 $8
 ASCIIEOF
 
-# CONFIG JSONC via Python3 agar unicode Nerd Font icon tidak hilang
 python3 << 'PYEOF'
 icons = {
     "os":         "\U000F0EC7",
@@ -201,57 +232,46 @@ config = """{
 for key, icon in icons.items():
     config = config.replace(f"ICON_{key}", icon)
 
-path = "/root/.config/fastfetch/config.jsonc"
-with open(path, "w", encoding="utf-8") as f:
+with open("/root/.config/fastfetch/config.jsonc", "w", encoding="utf-8") as f:
     f.write(config)
-
-print(f"[OK] Config written to {path}")
 PYEOF
 
-# ── STARTUP CONFIG ───────────────────────────────────
-echo ""
-echo "[4/5] Configuring startup..."
+ok "ASCII art and config written"
 
+# ── STEP 6: DISABLE MOTD ─────────────────────────────
+step 6 "Disabling default MOTD..."
 touch ~/.hushlogin
-chmod -x /etc/update-motd.d/*
+chmod -x /etc/update-motd.d/* 2>/dev/null || true
+ok "MOTD disabled"
 
-# .bashrc: langsung masuk fish (fastfetch sudah dihandle config.fish)
-if ! grep -q "exec fish" ~/.bashrc; then
-    echo "" >> ~/.bashrc
-    echo "# Launch fish shell on login" >> ~/.bashrc
-    echo "exec fish" >> ~/.bashrc
-fi
-
-# ── SWAP ─────────────────────────────────────────────
-echo ""
-echo "[5/5] Creating 2G Swap..."
-
+# ── STEP 7: SWAP ─────────────────────────────────────
+step 7 "Setting up 4G Swap..."
 if swapon --show | grep -q "/swapfile"; then
-    echo "Swapfile already exists, skipping..."
+    echo -e "         ${YELLOW}!${RESET} Swapfile already exists, skipping"
+    echo ""
 else
-    fallocate -l 2G /swapfile
+    fallocate -l 4G /swapfile
     chmod 600 /swapfile
-    mkswap /swapfile
+    mkswap /swapfile -q
     swapon /swapfile
 
-    if ! grep -q "/swapfile" /etc/fstab; then
-        echo '/swapfile none swap sw 0 0' | tee -a /etc/fstab
-    fi
+    grep -q "/swapfile" /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
+    grep -q "vm.swappiness" /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
+    sysctl -p -q
 
-    if ! grep -q "vm.swappiness" /etc/sysctl.conf; then
-        echo 'vm.swappiness=10' | tee -a /etc/sysctl.conf
-    fi
-
-    sysctl -p
+    ok "Swap created (4G, swappiness=10)"
 fi
 
-echo ""
-echo "Swap status:"
-swapon --show
-free -h
-
-echo ""
-echo "================================================"
-echo "  Selesai!"
-echo "  Login ulang atau jalankan: exec fish"
-echo "================================================"
+# ── DONE ─────────────────────────────────────────────
+echo -e "${CYAN}${BOLD}"
+echo "  ╔══════════════════════════════════════════════╗"
+echo "  ║               All Done!                      ║"
+echo "  ║                                              ║"
+echo "  ║  Fastfetch     : installed & configured      ║"
+echo "  ║  Fish Shell    : installed, greeting off     ║"
+echo "  ║  MOTD          : disabled                    ║"
+echo "  ║  Swap          : 4G active                   ║"
+echo "  ║                                              ║"
+echo "  ║  Run: exec fish                              ║"
+echo "  ╚══════════════════════════════════════════════╝"
+echo -e "${RESET}"
