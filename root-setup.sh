@@ -14,7 +14,6 @@ clear
 echo -e "${CYAN}${BOLD}"
 echo "  ╔══════════════════════════════════════════════╗"
 echo "  ║        SSH Root Login Configurator           ║"
-echo "  ║              Ubuntu 24.04                    ║"
 echo "  ╚══════════════════════════════════════════════╝"
 echo -e "${RESET}"
 
