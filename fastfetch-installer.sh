@@ -14,7 +14,7 @@ clear
 echo -e "${CYAN}${BOLD}"
 echo "  ╔══════════════════════════════════════════════╗"
 echo "  ║        Fastfetch + Fish Shell Installer      ║"
-echo "  ║              Ubuntu 24.04 / root             ║"
+echo "  ║           Multi-Distro Compatible            ║"
 echo "  ╚══════════════════════════════════════════════╝"
 echo -e "${RESET}"
 
@@ -27,6 +27,10 @@ ok() {
     echo ""
 }
 
+warn() {
+    echo -e "         ${YELLOW}!${RESET} $1"
+}
+
 fail() {
     echo -e "         ${RED}✗${RESET} $1"
     exit 1
@@ -34,36 +38,171 @@ fail() {
 
 TOTAL=7
 
-# ── STEP 1: APT UPDATE ───────────────────────────────
-step 1 "Updating package list..."
-apt update -qq && ok "Package list updated"
+# ── DETECT OS ────────────────────────────────────────
+detect_os() {
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        OS_ID="${ID,,}"
+        OS_ID_LIKE="${ID_LIKE,,}"
+        OS_VERSION="$VERSION_ID"
+        OS_NAME="$PRETTY_NAME"
+    else
+        fail "Cannot detect OS. /etc/os-release not found."
+    fi
+}
 
-# ── STEP 2: INSTALL FASTFETCH ────────────────────────
-step 2 "Adding Fastfetch PPA and installing..."
-add-apt-repository ppa:zhangsongcui3371/fastfetch -y -q 2>/dev/null
-apt update -qq
-apt install -y -q fastfetch && ok "Fastfetch installed"
+detect_os
 
-# ── STEP 3: INSTALL FISH ─────────────────────────────
-step 3 "Installing Fish shell..."
-apt install -y -q fish && ok "Fish shell installed"
+echo -e "  ${BOLD}Detected OS :${RESET} $OS_NAME"
+echo -e "  ${BOLD}Distro ID   :${RESET} $OS_ID"
+echo ""
 
-# ── STEP 4: CONFIGURE FISH ───────────────────────────
-step 4 "Configuring Fish shell..."
+# ── STEP 1: INSTALL FASTFETCH ────────────────────────
+TOTAL=7
+step 1 "Installing Fastfetch..."
+
+install_fastfetch_deb_latest() {
+    local ARCH
+    ARCH=$(dpkg --print-architecture)
+    local DEB_URL
+    DEB_URL=$(curl -fsSL https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
+        | grep "browser_download_url" \
+        | grep "linux_${ARCH}.deb" \
+        | head -1 \
+        | cut -d '"' -f 4)
+
+    if [ -z "$DEB_URL" ]; then
+        fail "Could not find fastfetch .deb for arch: $ARCH"
+    fi
+
+    local TMP_DEB
+    TMP_DEB=$(mktemp /tmp/fastfetch_XXXXXX.deb)
+    curl -fsSL "$DEB_URL" -o "$TMP_DEB"
+    dpkg -i "$TMP_DEB" 2>/dev/null || apt-get install -f -y -q
+    rm -f "$TMP_DEB"
+}
+
+case "$OS_ID" in
+    ubuntu)
+        apt-get update -qq
+        apt-get install -y -q software-properties-common curl
+        add-apt-repository ppa:zhangsongcui3371/fastfetch -y -q 2>/dev/null
+        apt-get update -qq
+        apt-get install -y -q fastfetch
+        ;;
+    debian)
+        apt-get update -qq
+        apt-get install -y -q curl
+        install_fastfetch_deb_latest
+        ;;
+    linuxmint | pop)
+        apt-get update -qq
+        apt-get install -y -q software-properties-common curl
+        add-apt-repository ppa:zhangsongcui3371/fastfetch -y -q 2>/dev/null
+        apt-get update -qq
+        apt-get install -y -q fastfetch
+        ;;
+    fedora)
+        dnf install -y -q fastfetch
+        ;;
+    rhel | centos | almalinux | rocky)
+        dnf install -y -q epel-release 2>/dev/null || true
+        dnf install -y -q fastfetch 2>/dev/null || {
+            warn "fastfetch not in repo, installing from GitHub..."
+            local ARCH
+            ARCH=$(uname -m)
+            local RPM_URL
+            RPM_URL=$(curl -fsSL https://api.github.com/repos/fastfetch-cli/fastfetch/releases/latest \
+                | grep "browser_download_url" \
+                | grep "linux_${ARCH}.rpm" \
+                | head -1 \
+                | cut -d '"' -f 4)
+            dnf install -y "$RPM_URL"
+        }
+        ;;
+    arch | manjaro | endeavouros)
+        pacman -Sy --noconfirm fastfetch
+        ;;
+    alpine)
+        apk update -q
+        apk add -q fastfetch
+        ;;
+    opensuse* | suse)
+        zypper install -y fastfetch
+        ;;
+    *)
+        if echo "$OS_ID_LIKE" | grep -q "debian\|ubuntu"; then
+            warn "Unknown Debian-based distro, trying GitHub release..."
+            apt-get update -qq
+            apt-get install -y -q curl
+            install_fastfetch_deb_latest
+        elif echo "$OS_ID_LIKE" | grep -q "rhel\|fedora"; then
+            warn "Unknown RHEL-based distro, trying dnf..."
+            dnf install -y -q fastfetch
+        elif command -v pacman &>/dev/null; then
+            warn "Unknown Arch-based distro, trying pacman..."
+            pacman -Sy --noconfirm fastfetch
+        else
+            fail "Unsupported distro: $OS_ID. Please install fastfetch manually."
+        fi
+        ;;
+esac
+
+ok "Fastfetch installed ($(fastfetch --version 2>/dev/null | head -1))"
+
+# ── STEP 2: INSTALL FISH ─────────────────────────────
+step 2 "Installing Fish shell..."
+
+case "$OS_ID" in
+    ubuntu | debian | linuxmint | pop)
+        apt-get install -y -q fish
+        ;;
+    fedora | rhel | centos | almalinux | rocky)
+        dnf install -y -q fish
+        ;;
+    arch | manjaro | endeavouros)
+        pacman -Sy --noconfirm fish
+        ;;
+    alpine)
+        apk add -q fish
+        ;;
+    opensuse* | suse)
+        zypper install -y fish
+        ;;
+    *)
+        if echo "$OS_ID_LIKE" | grep -q "debian\|ubuntu"; then
+            apt-get install -y -q fish
+        elif echo "$OS_ID_LIKE" | grep -q "rhel\|fedora"; then
+            dnf install -y -q fish
+        elif command -v pacman &>/dev/null; then
+            pacman -Sy --noconfirm fish
+        else
+            warn "Could not install fish automatically. Please install it manually."
+        fi
+        ;;
+esac
+
+ok "Fish shell installed"
+
+# ── STEP 3: CONFIGURE FISH ───────────────────────────
+step 3 "Configuring Fish shell..."
+
 fish -c "set -U fish_greeting ''" 2>/dev/null || true
+
 mkdir -p /root/.config/fish
 cat > /root/.config/fish/config.fish << 'FISHEOF'
 fastfetch
 FISHEOF
 
-if ! grep -q "exec fish" ~/.bashrc; then
+if ! grep -q "exec fish" ~/.bashrc 2>/dev/null; then
     echo "" >> ~/.bashrc
     echo "exec fish" >> ~/.bashrc
 fi
+
 ok "Fish configured — greeting disabled, fastfetch on startup"
 
-# ── STEP 5: WRITE ASCII + CONFIG ─────────────────────
-step 5 "Writing Fastfetch ASCII art and config..."
+# ── STEP 4: ASCII + CONFIG ───────────────────────────
+step 4 "Writing Fastfetch ASCII art and config..."
 mkdir -p /root/.config/fastfetch
 
 cat > /root/.config/fastfetch/ascii.txt << 'ASCIIEOF'
@@ -238,40 +377,46 @@ PYEOF
 
 ok "ASCII art and config written"
 
-# ── STEP 6: DISABLE MOTD ─────────────────────────────
-step 6 "Disabling default MOTD..."
+# ── STEP 5: DISABLE MOTD ─────────────────────────────
+step 5 "Disabling default MOTD..."
 touch ~/.hushlogin
 chmod -x /etc/update-motd.d/* 2>/dev/null || true
 ok "MOTD disabled"
 
-# ── STEP 7: SWAP ─────────────────────────────────────
-step 7 "Setting up 4G Swap..."
+# ── STEP 6: SWAP ─────────────────────────────────────
+step 6 "Setting up Swap..."
 if swapon --show | grep -q "/swapfile"; then
-    echo -e "         ${YELLOW}!${RESET} Swapfile already exists, skipping"
+    warn "Swapfile already exists, skipping"
     echo ""
 else
-    fallocate -l 4G /swapfile
+    fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=4096 status=none
     chmod 600 /swapfile
     mkswap /swapfile -q
     swapon /swapfile
-
     grep -q "/swapfile" /etc/fstab || echo '/swapfile none swap sw 0 0' >> /etc/fstab
     grep -q "vm.swappiness" /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
     sysctl -p -q
-
-    ok "Swap created (4G, swappiness=10)"
+    ok "Swap created (2G, swappiness=10)"
 fi
 
-# ── DONE ─────────────────────────────────────────────
+# ── STEP 7: SUMMARY ──────────────────────────────────
+step 7 "Verifying installation..."
+
+FF_VER=$(fastfetch --version 2>/dev/null | head -1 || echo "unknown")
+FISH_VER=$(fish --version 2>/dev/null || echo "unknown")
+SWAP_SIZE=$(swapon --show --noheadings 2>/dev/null | awk '{print $3}' | head -1 || echo "none")
+
+ok "Verification complete"
+
 echo -e "${CYAN}${BOLD}"
 echo "  ╔══════════════════════════════════════════════╗"
 echo "  ║               All Done!                      ║"
-echo "  ║                                              ║"
-echo "  ║  Fastfetch     : installed & configured      ║"
-echo "  ║  Fish Shell    : installed, greeting off     ║"
-echo "  ║  MOTD          : disabled                    ║"
-echo "  ║  Swap          : 4G active                   ║"
-echo "  ║                                              ║"
+echo "  ╠══════════════════════════════════════════════╣"
+printf "  ║  %-20s : %-23s║\n" "OS" "$OS_NAME"
+printf "  ║  %-20s : %-23s║\n" "Fastfetch" "$FF_VER"
+printf "  ║  %-20s : %-23s║\n" "Fish" "$FISH_VER"
+printf "  ║  %-20s : %-23s║\n" "Swap" "$SWAP_SIZE"
+echo "  ╠══════════════════════════════════════════════╣"
 echo "  ║  Run: exec fish                              ║"
 echo "  ╚══════════════════════════════════════════════╝"
 echo -e "${RESET}"
