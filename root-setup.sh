@@ -15,44 +15,41 @@ WHITE='\033[1;37m'
 BOLD='\033[1m'
 DIM='\033[2m'
 BG_BLUE='\033[44m'
-BG_CYAN='\033[46m'
 BG_GREEN='\033[42m'
 BG_RED='\033[41m'
 RESET='\033[0m'
 
 clear
 
-# Semua elemen pakai margin yang sama
 M="    "
-# Lebar konten box (harus konsisten semua)
-BW=48
+BW=46
 
-# Box dengan background: pad teks ke fixed width
-bgbox() {
+TOP="${M}╔$(printf '═%.0s' $(seq 1 $BW))╗"
+BOT="${M}╚$(printf '═%.0s' $(seq 1 $BW))╝"
+DIV="${M}$(printf '─%.0s' $(seq 1 $(( BW + 2 ))))"
+
+mid() {
     local color="$1"
     local text="$2"
     local tlen=${#text}
-    local pad=$(( BW - tlen ))
-    printf "${M}${color}${WHITE}${BOLD} %s%${pad}s ${RESET}\n" "$text" ""
+    local pad=$(( BW - tlen - 1 ))
+    printf "${M}║ ${color}${BOLD}%s${RESET}%${pad}s║\n" "$text" ""
 }
-
-# Divider sepanjang BW+2 (sama dengan lebar box)
-DIV="${M}$(printf '─%.0s' $(seq 1 $(( BW + 2 ))))"
 
 step() {
     echo ""
-    bgbox "$BG_BLUE" "  STEP $1/3   $2"
+    echo -e "${M}${BG_BLUE}${WHITE}${BOLD} STEP $1/3   $2 ${RESET}"
     echo -e "${DIM}${CYAN}${DIV}${RESET}"
 }
 
 ok() {
-    bgbox "$BG_GREEN" "  ✓  $1"
+    echo -e "${M}${BG_GREEN}${WHITE}${BOLD} ✓  $1 ${RESET}"
     echo ""
     sleep 0.3
 }
 
 err() {
-    bgbox "$BG_RED" "  ✗  $1"
+    echo -e "${M}${BG_RED}${WHITE}${BOLD} ✗  $1 ${RESET}"
     echo ""
 }
 
@@ -62,7 +59,10 @@ info() {
 
 # ── Banner ─────────────────────────────────────────
 echo ""
-bgbox "$BG_CYAN" "     SSH Root Login Configurator        "
+echo -e "${CYAN}${BOLD}${TOP}${RESET}"
+mid "${CYAN}" "      SSH Root Login Configurator"
+
+echo -e "${CYAN}${BOLD}${BOT}${RESET}"
 echo ""
 echo -e "${M}  ${DIM}${CYAN}▸ Started at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 
@@ -100,7 +100,9 @@ ok "SSH service restarted"
 step 3 "Set root password"
 
 echo ""
-bgbox "$BG_BLUE" "    Enter a new password for root account   "
+echo -e "${CYAN}${BOLD}${TOP}${RESET}"
+mid "${CYAN}" "   Enter a new password for root account"
+echo -e "${CYAN}${BOLD}${BOT}${RESET}"
 echo -e "${M}  ${YELLOW}⚠  Password will be visible as you type${RESET}"
 echo ""
 
@@ -128,7 +130,9 @@ PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
 
 # ══ DONE ══════════════════════════════════════════
 echo ""
-bgbox "$BG_GREEN" "               All Done!                "
+echo -e "${GREEN}${BOLD}${TOP}${RESET}"
+mid "${GREEN}" "               All Done!"
+echo -e "${GREEN}${BOLD}${BOT}${RESET}"
 echo ""
 echo -e "${M}  ${BOLD}${CYAN}Summary${RESET}"
 echo -e "${DIM}${CYAN}${DIV}${RESET}"
