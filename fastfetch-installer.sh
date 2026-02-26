@@ -336,6 +336,7 @@ fish --no-config -c "set -U fish_greeting ''" 2>/dev/null || true
 
 mkdir -p /root/.config/fish
 cat > /root/.config/fish/config.fish << 'FISHEOF'
+set -g fish_greeting ""
 fastfetch
 FISHEOF
 
@@ -636,4 +637,3 @@ echo -e "${GREEN}${BOLD}${BOT}${RESET}"
 echo ""
 echo -e "${M}  ${DIM}${CYAN}▸ Completed at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
-# @yardanshaql
