@@ -332,9 +332,17 @@ ok "Fish shell installed"
 # ══ STEP 3 ════════════════════════════════════════
 step 3 "Configuring Fish shell"
 
-fish --no-config -c "set -U fish_greeting ''" 2>/dev/null || true
-
 mkdir -p /root/.config/fish
+mkdir -p /root/.local/share/fish
+
+# Set greeting langsung ke universal variables file
+FISH_VARS="/root/.local/share/fish/fish_variables"
+if [ -f "$FISH_VARS" ]; then
+    # Update existing
+    sed -i '/^SETUVAR fish_greeting/d' "$FISH_VARS"
+fi
+echo "SETUVAR fish_greeting:" >> "${FISH_VARS}"
+
 cat > /root/.config/fish/config.fish << 'FISHEOF'
 set -g fish_greeting ""
 fastfetch
