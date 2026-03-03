@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# ── Auto-elevate to root ───────────────────────────
 if [ "$EUID" -ne 0 ]; then
     exec sudo bash -c "$(wget -qO- yardansh.xyz/ssh)"
 fi
@@ -57,7 +56,6 @@ info() {
     printf "${M}  ${CYAN}›${RESET}  ${BOLD}%-10s${RESET}  %b\n" "$1" "$2"
 }
 
-# ── Banner ─────────────────────────────────────────
 echo ""
 echo -e "${CYAN}${BOLD}${TOP}${RESET}"
 mid "${CYAN}" "      SSH Root Login Configurator"
@@ -66,7 +64,6 @@ echo -e "${CYAN}${BOLD}${BOT}${RESET}"
 echo ""
 echo -e "${M}  ${DIM}${CYAN}▸ Started at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 
-# ══ STEP 1 ════════════════════════════════════════
 step 1 "Enabling PermitRootLogin"
 
 SSHD_CONFIG="/etc/ssh/sshd_config"
@@ -86,7 +83,6 @@ fi
 echo ""
 ok "PermitRootLogin set to yes"
 
-# ══ STEP 2 ════════════════════════════════════════
 step 2 "Restarting SSH service"
 
 info "Action"  "Sending restart to ${WHITE}${BOLD}sshd${RESET}"
@@ -96,7 +92,6 @@ info "Service" "${GREEN}${BOLD}active & running${RESET}"
 echo ""
 ok "SSH service restarted"
 
-# ══ STEP 3 ════════════════════════════════════════
 step 3 "Set root password"
 
 echo ""
@@ -123,12 +118,10 @@ echo "root:$PASSWORD" | chpasswd
 echo ""
 ok "Root password updated successfully"
 
-# ── Detect Public IP ───────────────────────────────
 PUBLIC_IP=$(curl -s --max-time 5 https://api.ipify.org 2>/dev/null || \
             wget -qO- --timeout=5 https://api.ipify.org 2>/dev/null || \
             echo "unknown")
 
-# ══ DONE ══════════════════════════════════════════
 echo ""
 echo -e "${GREEN}${BOLD}${TOP}${RESET}"
 mid "${GREEN}" "               All Done!"
