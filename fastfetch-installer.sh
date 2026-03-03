@@ -66,7 +66,6 @@ log() {
 
 TOTAL=7
 
-# ── Banner ─────────────────────────────────────────
 echo ""
 echo -e "${CYAN}${BOLD}${TOP}${RESET}"
 mid "${CYAN}" "          Fastfetch Installer"
@@ -75,7 +74,6 @@ echo ""
 echo -e "${M}  ${DIM}${CYAN}▸ Started at $(date '+%Y-%m-%d %H:%M:%S')${RESET}"
 echo ""
 
-# ── DETECT OS ──────────────────────────────────────
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS_ID="${ID,,}"
@@ -89,7 +87,6 @@ info "Detected OS" "${WHITE}${BOLD}$OS_NAME${RESET}"
 info "Distro ID"   "${WHITE}${BOLD}$OS_ID${RESET}"
 echo ""
 
-# ── ASK CUSTOM ASCII ───────────────────────────────
 echo -e "${M}  ${CYAN}${BOLD}┌──────────────────────────────────────────────┐${RESET}"
 echo -e "${M}  ${CYAN}${BOLD}│           Custom ASCII Art (optional)        │${RESET}"
 echo -e "${M}  ${CYAN}${BOLD}├──────────────────────────────────────────────┤${RESET}"
@@ -122,7 +119,6 @@ while true; do
                 CUSTOM_ASCII_CONTENT=""
                 COLOR_IDX=1
                 while IFS= read -r line; do
-                    # Cek apakah baris sudah punya color tag $1-$8
                     if [[ "$line" =~ ^\$[1-8] ]]; then
                         CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}${line}"$'\n'
                     else
@@ -147,7 +143,6 @@ while true; do
                 CUSTOM_ASCII_CONTENT=""
                 COLOR_IDX=1
                 while IFS= read -r line; do
-                    # Cek apakah baris sudah punya color tag $1-$8
                     if [[ "$line" =~ ^\$[1-8] ]]; then
                         CUSTOM_ASCII_CONTENT="${CUSTOM_ASCII_CONTENT}${line}"$'\n'
                     else
@@ -174,7 +169,6 @@ while true; do
 done
 echo ""
 
-# ── ASK SWAP SIZE ──────────────────────────────────
 echo -e "${M}  ${CYAN}${BOLD}┌──────────────────────────────────────────────┐${RESET}"
 echo -e "${M}  ${CYAN}${BOLD}│         How many GB of swap do you want?     │${RESET}"
 echo -e "${M}  ${CYAN}${BOLD}│         Enter 0 to skip swap setup           │${RESET}"
@@ -193,7 +187,6 @@ while true; do
 done
 echo ""
 
-# ── INSTALL FASTFETCH FROM GITHUB ──────────────────
 install_fastfetch_deb_latest() {
     local ARCH
     ARCH=$(dpkg --print-architecture)
@@ -237,7 +230,6 @@ install_fastfetch_deb_latest() {
     rm -f "$TMP_DEB"
 }
 
-# ══ STEP 1 ════════════════════════════════════════
 step 1 "Installing Fastfetch"
 
 case "$OS_ID" in
@@ -295,7 +287,6 @@ esac
 
 ok "Fastfetch installed ($(fastfetch --version 2>/dev/null | head -1))"
 
-# ══ STEP 2 ════════════════════════════════════════
 step 2 "Installing Fish shell"
 
 case "$OS_ID" in
@@ -329,16 +320,13 @@ esac
 
 ok "Fish shell installed"
 
-# ══ STEP 3 ════════════════════════════════════════
 step 3 "Configuring Fish shell"
 
 mkdir -p /root/.config/fish
 mkdir -p /root/.local/share/fish
 
-# Set greeting langsung ke universal variables file
 FISH_VARS="/root/.local/share/fish/fish_variables"
 if [ -f "$FISH_VARS" ]; then
-    # Update existing
     sed -i '/^SETUVAR fish_greeting/d' "$FISH_VARS"
 fi
 echo "SETUVAR fish_greeting:" >> "${FISH_VARS}"
@@ -359,7 +347,6 @@ info "Shell"     "${GREEN}auto-switch via .bashrc${RESET}"
 
 ok "Fish configured"
 
-# ══ STEP 4 ════════════════════════════════════════
 step 4 "Writing Fastfetch ASCII art and config"
 
 mkdir -p /root/.config/fastfetch
@@ -545,7 +532,6 @@ info "Config"     "${GREEN}written${RESET}"
 
 ok "Fastfetch ASCII art and config written"
 
-# ══ STEP 5 ════════════════════════════════════════
 step 5 "Disabling default MOTD"
 
 touch ~/.hushlogin
@@ -556,7 +542,6 @@ info "MOTD"       "${GREEN}disabled${RESET}"
 
 ok "MOTD disabled"
 
-# ══ STEP 6 ════════════════════════════════════════
 step 6 "Setting up Swap"
 
 if [ "$SWAP_GB" -eq 0 ]; then
@@ -569,7 +554,6 @@ else
     SWAP_OK=true
     SWAP_BYTES=$(( SWAP_GB * 1024 ))
 
-    # Cek apakah environment support swap (OpenVZ/LXC)
     if [ ! -w /proc/sys/vm/swappiness ] 2>/dev/null; then
         warn "Swap not supported on this environment (OpenVZ/LXC), skipping"
         SWAP_OK=false
@@ -617,7 +601,6 @@ else
     fi
 fi
 
-# ══ STEP 7 ════════════════════════════════════════
 step 7 "Verifying installation"
 
 FF_VER=$(fastfetch --version 2>/dev/null | head -1 || echo "unknown")
@@ -630,7 +613,6 @@ info "Swap"       "${GREEN}${BOLD}$SWAP_SIZE${RESET}"
 
 ok "Verification complete"
 
-# ══ DONE ══════════════════════════════════════════
 echo ""
 echo -e "${GREEN}${BOLD}${TOP}${RESET}"
 mid "${GREEN}" "             All Done!"
